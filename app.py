@@ -16,7 +16,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-@st.cache_data(ttl=600)  # 10分間キャッシュ
+@st.cache_data(ttl=600)
 def load_data():
     log_url = "https://api.tamamo.dev/GvGLog?Group=19&Class=3&Block=1&Week=Sat"
     castle_url = "https://tamamo.dev/assets/Resource/CastleId.json"
@@ -26,21 +26,25 @@ def load_data():
         log_res = requests.get(log_url).json()
         castle_res = requests.get(castle_url).json()
         
-        # データ形式のチェック（リストでない場合はエラー表示）
-        if not isinstance(log_res, list):
-            st.warning(f"⚠️ APIデータがリスト形式ではありません。応答内容: {log_res}")
+        # 階層構造から実際のログ部分(Log)を抽出
+        # 今回のエラー原因：log_res['data']['Log'] にデータが入っていた
+        if isinstance(log_res, dict) and 'data' in log_res and 'Log' in log_res['data']:
+            log_data = log_res['data']['Log']
+        else:
+            st.warning("⚠️ APIのデータ構造が想定と異なります。")
             return pd.DataFrame()
 
-        df = pd.DataFrame(log_res)
+        df = pd.DataFrame(log_data)
         
-        # 城データのマッピング
-        castle_map = {str(item['Id']): item['Name'] for item in castle_res}
-        if 'CastleId' in df.columns:
-            df['CastleName'] = df['CastleId'].astype(str).map(castle_map).fillna("Unknown")
+        # 城データのマッピング (CastleID -> Name)
+        # API側のキーが 'CastleID' (大文字ID) なので修正
+        castle_map = {item['Id']: item['Name'] for item in castle_res}
+        if 'CastleID' in df.columns:
+            df['CastleName'] = df['CastleID'].map(castle_map).fillna("Unknown")
         
         return df
     except Exception as e:
-        st.error(f"❌ データの読み込み中にエラーが発生しました: {e}")
+        st.error(f"❌ エラーが発生しました: {e}")
         return pd.DataFrame()
 
 # --- メインコンテンツ ---
@@ -51,70 +55,52 @@ st.markdown("---")
 df = load_data()
 
 if not df.empty:
-    # --- サイドバー フィルター ---
-    st.sidebar.header("Filter Settings")
-    all_guilds = sorted(df['GuildName'].unique())
-    selected_guilds = st.sidebar.multiselect(
-        "Select Guilds to Display", 
-        options=all_guilds,
-        default=all_guilds[:10] if len(all_guilds) > 10 else all_guilds
-    )
-    
-    # フィルタリング
-    filtered_df = df[df['GuildName'].isin(selected_guilds)]
+    # 今回のデータにはGuildNameが含まれていない可能性があるため、CastleIDベースで表示
+    st.markdown("### 📊 Castle Status Analysis")
 
     # --- 上段：メトリクスカード ---
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Total Logs", len(filtered_df))
+        st.metric("Total Castles", len(df))
     with col2:
-        st.metric("Active Guilds", len(selected_guilds))
+        # None以外のデータがあるかカウント（簡易的な活動チェック）
+        active_count = df['DefenseTime'].count() if 'DefenseTime' in df.columns else 0
+        st.metric("Active Status", active_count)
     with col3:
-        st.metric("Castles Held", filtered_df['CastleId'].nunique())
-    with col4:
-        st.metric("Status", "Online", delta="Connected")
-
-    st.markdown("### 📊 Activity Analysis")
+        st.metric("Status", "Online")
 
     # --- 中段：チャートエリア ---
-    left_chart, right_chart = st.columns([3, 2])
+    left_chart, right_chart = st.columns(2)
 
     with left_chart:
-        # ギルドごとの活動ログ数
-        guild_counts = filtered_df['GuildName'].value_counts().reset_index()
-        guild_counts.columns = ['GuildName', 'Logs']
-        fig_bar = px.bar(
-            guild_counts,
-            x='Logs', y='GuildName', orientation='h',
-            title="Logs per Guild",
-            template="plotly_dark",
-            color='Logs',
-            color_continuous_scale='Blues'
-        )
-        fig_bar.update_layout(yaxis={'categoryorder':'total ascending'})
-        st.plotly_chart(fig_bar, use_container_width=True)
+        # 城ごとのステータスを可視化（棒グラフ）
+        if 'CastleName' in df.columns:
+            fig_bar = px.bar(
+                df, x='CastleName', y='CastleID',
+                title="Castle Overview",
+                template="plotly_dark",
+                color='CastleID'
+            )
+            st.plotly_chart(fig_bar, use_container_width=True)
 
     with right_chart:
-        # 城の占有分布
-        if 'CastleName' in filtered_df.columns:
+        # 城の分布
+        if 'CastleName' in df.columns:
             fig_pie = px.pie(
-                filtered_df, names='CastleName', 
-                title="Castle Possession Distribution",
+                df, names='CastleName', 
+                title="Castle Distribution",
                 template="plotly_dark",
-                hole=0.5
+                hole=0.4
             )
             st.plotly_chart(fig_pie, use_container_width=True)
 
     # --- 下段：データ詳細 ---
-    st.markdown("### 📋 Raw Data")
-    with st.expander("Click to view full logs"):
-        st.dataframe(
-            filtered_df[['GuildName', 'CastleName', 'CastleId']], 
-            use_container_width=True
-        )
+    st.markdown("### 📋 Detailed Logs")
+    with st.expander("Click to view full data table"):
+        st.dataframe(df, use_container_width=True)
 
 else:
-    st.info("💡 表示するデータがありません。APIの稼働状況を確認してください。")
+    st.info("💡 現在表示できるデータがありません（すべての値が空の可能性があります）。")
     if st.button("Retry Connection"):
         st.cache_data.clear()
         st.rerun()
