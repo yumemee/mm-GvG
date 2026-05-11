@@ -31,6 +31,7 @@
             font-size: 11px; 
         }
 
+        /* ギルド別配置数パネル */
         .guild-summary {
             background: var(--surface2);
             border-bottom: 1px solid var(--border);
@@ -39,18 +40,38 @@
             gap: 10px;
             overflow-x: auto;
             white-space: nowrap;
-            min-height: 32px;
+            min-height: 40px;
             align-items: center;
+        }
+        .summary-label {
+            font-size: 10px;
+            font-weight: bold;
+            color: var(--muted);
+            background: rgba(0,0,0,0.3);
+            padding: 4px 8px;
+            border-radius: 3px;
+            border: 1px solid var(--border2);
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .summary-label::before {
+            content: "";
+            width: 6px;
+            height: 6px;
+            background: var(--defense);
+            border-radius: 50%;
         }
         .guild-chip {
             background: rgba(255,255,255,0.05);
             border: 1px solid var(--border);
-            padding: 2px 8px;
+            padding: 3px 10px;
             border-radius: 3px;
-            font-size: 10px;
+            font-size: 11px;
             font-family: var(--mono);
         }
-        .guild-chip b { color: var(--defense); margin-left: 5px; }
+        .guild-chip b { color: var(--defense); margin-left: 6px; }
         
         .day-tabs { display: flex; gap: 4px; }
         .day-tab { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); padding: 2px 8px; border-radius: 3px; cursor: pointer; font-family: var(--mono); font-size: 10px; }
@@ -135,6 +156,7 @@
         <span id="clock" style="margin-left: auto; font-weight: bold; color: var(--accent);">00:00:00</span>
     </div>
     <div class="guild-summary" id="guildSummary">
+        <div class="summary-label">防衛パーティ数</div>
         <span style="color:var(--muted); font-size:10px;">Select group to see summary...</span>
     </div>
 </div>
@@ -189,13 +211,18 @@
         });
         const container = document.getElementById('guildSummary');
         const sorted = Object.entries(summary).sort((a,b) => b[1] - a[1]);
+        
+        let labelHtml = `<div class="summary-label">防衛パーティ数</div>`;
         if (sorted.length === 0) {
-            container.innerHTML = '<span style="color:var(--muted); font-size:10px;">NO DATA</span>';
+            container.innerHTML = labelHtml + `<span style="color:var(--muted); font-size:10px;">NO DATA</span>`;
             return;
         }
-        container.innerHTML = sorted.map(([name, count]) => 
+        
+        const chipsHtml = sorted.map(([name, count]) => 
             `<div class="guild-chip">${name}<b>${count}P</b></div>`
         ).join('');
+        
+        container.innerHTML = labelHtml + chipsHtml;
     }
 
     async function updateData() {
@@ -249,15 +276,10 @@
         data.forEach(row => {
             const id = row.CastleId;
             const log = historyLog[id] || { attack: '-', defense: '-', counter: '-', fallen: '-' };
-            
-            // 攻撃ギルド判定
             const attacker = row.AttackerGuildName && row.AttackerGuildName.trim() !== "" ? row.AttackerGuildName : "-";
-            
-            // 状態・クラスの基本決定
             let label = {1:'宣戦', 2:'陥落', 3:'反撃', 4:'安定'}[row.State] || '安定';
             let sClass = {1:'s-battle', 2:'s-fallen', 3:'s-battle', 4:'s-defense'}[row.State] || 's-defense';
 
-            // 【確定ロジック】攻撃ギルドがいない場合は確定
             if (attacker === "-") {
                 label = "確定";
                 sClass = "s-defense";
