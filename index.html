@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>▶ GRAND WAR MONITOR / FULL-AUTO TRACKER</title>
+    <title>▶ GRAND WAR MONITOR / HYBRID TRACKER</title>
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -16,17 +16,39 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 13px; min-height: 100vh; }
         header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 16px; position: sticky; top: 0; z-index: 100; }
-        .status-bar { background: var(--surface); border-bottom: 1px solid var(--border2); padding: 8px 16px; display: flex; align-items: center; gap: 14px; font-family: var(--mono); font-size: 11px; position: sticky; top: 135px; z-index: 99; }
+        
+        .status-bar { 
+            background: var(--surface); 
+            border-bottom: 1px solid var(--border2); 
+            padding: 8px 16px; 
+            display: flex; 
+            align-items: center; 
+            gap: 14px; 
+            font-family: var(--mono); 
+            font-size: 11px; 
+            position: sticky; 
+            top: 135px; /* headerの高さに合わせて調整 */
+            z-index: 99; 
+        }
+        
+        .day-tabs { display: flex; gap: 4px; }
+        .day-tab { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); padding: 2px 8px; border-radius: 3px; cursor: pointer; font-family: var(--mono); font-size: 10px; }
+        .day-tab.active { border-color: var(--accent); color: var(--accent); background: #1a2030; }
+        
+        h1 { font-family: var(--mono); font-size: 14px; letter-spacing: 2px; color: var(--accent); margin-bottom: 12px; }
+        
         .controls { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
         .ctrl-group { display: flex; flex-direction: column; gap: 4px; }
         label { font-size: 10px; color: var(--muted); font-weight: bold; }
-        select, input { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 8px; font-size: 12px; border-radius: 4px; outline: none; }
-        .world-info { font-size: 11px; color: var(--accent); background: rgba(59, 130, 246, 0.1); padding: 4px 8px; border-radius: 4px; margin-top: 5px; display: inline-block; min-height: 20px; }
         
+        select, input { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 8px; font-size: 12px; border-radius: 4px; outline: none; }
+        
+        .world-info { font-size: 11px; color: var(--accent); background: rgba(59, 130, 246, 0.1); padding: 4px 8px; border-radius: 4px; margin-top: 5px; display: inline-block; min-height: 20px; }
+
         button { border: none; color: #fff; padding: 8px 20px; font-size: 12px; border-radius: 4px; cursor: pointer; font-weight: bold; height: 35px; }
         #autoBtn { background: var(--muted); transition: all 0.3s; min-width: 140px; }
         #autoBtn.active { background: var(--defense); box-shadow: 0 0 10px var(--defense); }
-        .reset-btn { background: transparent; border: 1px solid var(--attack); color: var(--attack); margin-left: auto; }
+        .reset-btn { background: transparent; border: 1px solid var(--attack); color: var(--attack); }
 
         .main { padding: 12px 16px; }
         #tableContainer { width: 100%; overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; }
@@ -48,7 +70,7 @@
 <body>
 
 <header id="header">
-    <h1>▶ GRAND WAR MONITOR / FULL-LIST AUTO-SYNC</h1>
+    <h1>▶ GRAND WAR MONITOR / ALL GROUPS</h1>
     <div class="controls">
         <div class="ctrl-group">
             <label>GROUP SELECTION (ID / WORLDS)</label>
@@ -57,33 +79,46 @@
         </div>
 
         <div class="ctrl-group">
+            <label>CLASS</label>
+            <select id="classSelect">
+                <option value="3" selected>Grand Master</option>
+                <option value="2">Expert</option>
+                <option value="1">Elite</option>
+            </select>
+        </div>
+
+        <div class="ctrl-group">
+            <label>BLOCK</label>
+            <select id="blockSelect">
+                <option value="0">Block A</option>
+                <option value="1" selected>Block B</option>
+                <option value="2">Block C</option>
+                <option value="3">Block D</option>
+            </select>
+        </div>
+
+        <button id="autoBtn"><span class="indicator" id="syncIndicator"></span>AUTO SYNC OFF</button>
+        
+        <div class="ctrl-group">
             <label>MANUAL ID</label>
             <input type="number" id="groupManual" placeholder="ID" style="width: 60px;">
         </div>
 
-        <div class="ctrl-group">
-            <label>CLASS / BLOCK</label>
-            <div style="display:flex; gap:5px;">
-                <select id="classSelect">
-                    <option value="3">G.Master</option>
-                    <option value="2">Expert</option>
-                    <option value="1">Elite</option>
-                </select>
-                <select id="blockSelect">
-                    <option value="0">A</option><option value="1" selected>B</option>
-                    <option value="2">C</option><option value="3">D</option>
-                </select>
-            </div>
-        </div>
-
-        <button id="autoBtn"><span class="indicator" id="syncIndicator"></span>AUTO SYNC OFF</button>
         <button id="resetLogBtn" class="reset-btn">記録リセット</button>
     </div>
 </header>
 
 <div class="status-bar">
-    <span id="updateStatus">SYSTEM READY</span>
-    <span id="clock" style="margin-left: auto; color: var(--accent); font-weight: bold;">00:00:00</span>
+    <div class="day-tabs" id="dayTabs">
+        <span class="day-tab active" data-day="Sat">SAT</span>
+        <span class="day-tab" data-day="Sun">SUN</span>
+        <span class="day-tab" data-day="Tue">TUE</span>
+        <span class="day-tab" data-day="Wed">WED</span>
+        <span class="day-tab" data-day="Thu">THU</span>
+        <span class="day-tab" data-day="Fri">FRI</span>
+    </div>
+    <span id="updateStatus" style="margin-left: 20px;">SYSTEM READY</span>
+    <span id="clock" style="margin-left: auto; font-weight: bold; color: var(--accent);">00:00:00</span>
 </div>
 
 <div class="main">
@@ -98,12 +133,11 @@
     const LOG_API = 'https://api.tamamo.dev/GvGLog';
     const CASTLE_API = 'https://tamamo.dev/assets/Resource/CastleId.json';
 
-    // ご指定いただいた網羅版のグループデータ
     const GROUP_DATA = {
         140: "W149, W150, W151, W152", 141: "W1, W7, W12, W19", 142: "W2, W8, W20, W27", 143: "W3, W4, W13, W31",
         144: "W5, W9, W21, W30", 145: "W6, W14, W15, W32", 146: "W10, W18, W24, W29", 147: "W11, W17, W22, W26",
         148: "W16, W23, W25, W28", 149: "W33, W54, W60, W63", 150: "W34, W43, W51, W61", 151: "W35, W44, W48, W53",
-        152: "W36, W38, W47, W64", 153: "W37, HEX46, W57, W58", 154: "W39, W52, W56, W62", 155: "W40, W41, W42, W55",
+        152: "W36, W38, W47, W64", 153: "W37, W46, W57, W58", 154: "W39, W52, W56, W62", 155: "W40, W41, W42, W55",
         156: "W45, W49, W50, W59", 157: "W65, W67, W78, W96", 158: "W66, W69, W76, W85", 159: "W68, W70, W84, W93",
         160: "W71, W75, W82, W89", 161: "W72, W79, W86, W91", 162: "W73, W83, W90, W95", 163: "W74, W80, W87, W94",
         164: "W77, W81, W88, W92", 165: "W97, W104, W110, W115", 166: "W98, W103, W108, W113", 167: "W99, W102, W109, W116",
@@ -118,11 +152,11 @@
     let isAutoSync = false;
     let syncTimer = null;
     let isFetching = false;
+    let currentDay = 'Sat';
 
     function setupGroupList() {
         const select = document.getElementById('groupSelect');
         const display = document.getElementById('selectedWorldDisplay');
-        
         const firstOpt = document.createElement('option');
         firstOpt.value = ""; firstOpt.textContent = "-- グループを選択 --";
         select.appendChild(firstOpt);
@@ -166,7 +200,7 @@
         const block = document.getElementById('blockSelect').value;
 
         try {
-            const res = await fetch(`${LOG_API}?Group=${group}&Class=${gClass}&Block=${block}`);
+            const res = await fetch(`${LOG_API}?Group=${group}&Class=${gClass}&Block=${block}&Week=${currentDay}`);
             const data = await res.json();
             
             processHistory(data);
@@ -185,14 +219,9 @@
         data.forEach(row => {
             const id = row.CastleId;
             if (!historyLog[id]) historyLog[id] = { attack: '-', defense: '-', counter: '-', fallen: '-' };
-
-            // 侵攻開始 (攻撃P > 0 かつ 布告中)
             if (row.AttackPartyCount > 0 && row.State === 1 && historyLog[id].attack === '-') historyLog[id].attack = now;
-            // 防衛開始 (防衛P > 0)
             if (row.DefensePartyCount > 0 && historyLog[id].defense === '-') historyLog[id].defense = now;
-            // 反撃開始 (ステータスが 反撃)
             if (row.State === 3 && historyLog[id].counter === '-') historyLog[id].counter = now;
-            // 陥落時刻 (ステータスが 陥落)
             if (row.State === 2 && historyLog[id].fallen === '-') historyLog[id].fallen = now;
         });
         localStorage.setItem('gvg_history_log', JSON.stringify(historyLog));
@@ -227,6 +256,15 @@
         document.getElementById('tableContainer').innerHTML = html;
     }
 
+    document.querySelectorAll('.day-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.day-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            currentDay = tab.dataset.day;
+            updateData();
+        });
+    });
+
     const autoBtn = document.getElementById('autoBtn');
     autoBtn.addEventListener('click', () => {
         isAutoSync = !isAutoSync;
@@ -246,8 +284,7 @@
         if (confirm('本日のタイムライン記録をすべてリセットしますか？')) {
             historyLog = {};
             localStorage.removeItem('gvg_history_log');
-            if (!isAutoSync) document.getElementById('tableContainer').innerHTML = "";
-            else updateData();
+            updateData();
         }
     });
 
