@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>▶ GRAND WAR MONITOR / AUTO-TRACKER</title>
+    <title>▶ GRAND WAR MONITOR / FULL-AUTO TRACKER</title>
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -21,25 +21,26 @@
         .ctrl-group { display: flex; flex-direction: column; gap: 4px; }
         label { font-size: 10px; color: var(--muted); font-weight: bold; }
         select, input { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 8px; font-size: 12px; border-radius: 4px; outline: none; }
-        .world-info { font-size: 11px; color: var(--accent); background: rgba(59, 130, 246, 0.1); padding: 4px 8px; border-radius: 4px; margin-top: 5px; display: inline-block; }
+        .world-info { font-size: 11px; color: var(--accent); background: rgba(59, 130, 246, 0.1); padding: 4px 8px; border-radius: 4px; margin-top: 5px; display: inline-block; min-height: 20px; }
         
-        button { border: none; color: #fff; padding: 8px 20px; font-size: 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        #autoBtn { background: var(--muted); transition: all 0.3s; }
+        button { border: none; color: #fff; padding: 8px 20px; font-size: 12px; border-radius: 4px; cursor: pointer; font-weight: bold; height: 35px; }
+        #autoBtn { background: var(--muted); transition: all 0.3s; min-width: 140px; }
         #autoBtn.active { background: var(--defense); box-shadow: 0 0 10px var(--defense); }
         .reset-btn { background: transparent; border: 1px solid var(--attack); color: var(--attack); margin-left: auto; }
 
         .main { padding: 12px 16px; }
         #tableContainer { width: 100%; overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; }
-        table { width: 100%; border-collapse: separate; border-spacing: 0; font-family: var(--mono); font-size: 12px; min-width: 1000px; }
+        table { width: 100%; border-collapse: separate; border-spacing: 0; font-family: var(--mono); font-size: 12px; min-width: 1100px; }
         thead th { background: var(--surface2); padding: 12px 10px; text-align: left; color: var(--muted); position: sticky; top: 0; border-bottom: 1px solid var(--border); }
         tbody td { padding: 10px; border-bottom: 1px solid var(--border2); }
+        
         .time-cell { font-size: 11px; color: var(--text); background: rgba(255,255,255,0.03); border-radius: 2px; padding: 2px 4px; text-align: center; }
         .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; }
         .s-battle { background: #3d2e00; color: var(--battle); }
         .s-fallen { background: #3d1000; color: var(--fallen); }
         .s-defense { background: #0d3020; color: var(--defense); }
         
-        .indicator { width: 8px; height: 8px; border-radius: 50%; background: #333; display: inline-block; margin-right: 5px; }
+        .indicator { width: 8px; height: 8px; border-radius: 50%; background: #333; display: inline-block; margin-right: 8px; }
         .indicator.active { background: var(--defense); animation: pulse 1s infinite; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
     </style>
@@ -47,17 +48,19 @@
 <body>
 
 <header id="header">
-    <h1>▶ GRAND WAR MONITOR / AUTO-SYNC</h1>
+    <h1>▶ GRAND WAR MONITOR / FULL-LIST AUTO-SYNC</h1>
     <div class="controls">
         <div class="ctrl-group">
-            <label>GROUP SELECTION</label>
-            <select id="groupSelect" style="width: 250px;"></select>
+            <label>GROUP SELECTION (ID / WORLDS)</label>
+            <select id="groupSelect" style="width: 320px;"></select>
             <div id="selectedWorldDisplay" class="world-info">World: -</div>
         </div>
+
         <div class="ctrl-group">
             <label>MANUAL ID</label>
             <input type="number" id="groupManual" placeholder="ID" style="width: 60px;">
         </div>
+
         <div class="ctrl-group">
             <label>CLASS / BLOCK</label>
             <div style="display:flex; gap:5px;">
@@ -72,19 +75,22 @@
                 </select>
             </div>
         </div>
+
         <button id="autoBtn"><span class="indicator" id="syncIndicator"></span>AUTO SYNC OFF</button>
-        <button id="resetLogBtn" class="reset-btn">記録クリア</button>
+        <button id="resetLogBtn" class="reset-btn">記録リセット</button>
     </div>
 </header>
 
 <div class="status-bar">
-    <span id="updateStatus">AUTO MONITORING READY</span>
+    <span id="updateStatus">SYSTEM READY</span>
     <span id="clock" style="margin-left: auto; color: var(--accent); font-weight: bold;">00:00:00</span>
 </div>
 
 <div class="main">
     <div id="tableContainer">
-        <div style="text-align:center; padding:60px; color:var(--muted)">AUTO SYNCをONにすると更新を開始します</div>
+        <div style="text-align:center; padding:60px; color:var(--muted); font-family: var(--mono);">
+            SELECT GROUP AND TURN ON "AUTO SYNC" TO MONITOR
+        </div>
     </div>
 </div>
 
@@ -92,7 +98,20 @@
     const LOG_API = 'https://api.tamamo.dev/GvGLog';
     const CASTLE_API = 'https://tamamo.dev/assets/Resource/CastleId.json';
 
-    const GROUP_DATA = { 140: "W149-152", 141: "W1-W19", 142: "W2-W27", 143: "W3-W31", 144: "W5-W30", 145: "W6-W32", 146: "W10-W29", 147: "W11-W26", 148: "W16-W28", 149: "W33-W63", 150: "W34-W61", 151: "W35-W53", 152: "W36-W64", 153: "W37-W58", 154: "W39-W62", 155: "W40-W55", 156: "W45-W59", 157: "W65-W96", 158: "W66-W85", 159: "W68-W93", 160: "W71-W89", 161: "W72-W91", 162: "W73-W95", 163: "W74-W94", 164: "W77-W92", 165: "W97-W115", 166: "W98-W113", 167: "W99-W116", 168: "W100-W114", 169: "W101-W112", 170: "W117-W132", 171: "W118-W131", 172: "W119-W125", 173: "W120-W130", 174: "W133-W148", 175: "W134-W145", 176: "W135-W147", 177: "W136-W146", 178: "W153-W156", 179: "W157-W160", 18: "W85-W97", 19: "W101-W113", 20: "W104-W116", 21: "W117-W129" };
+    // ご指定いただいた網羅版のグループデータ
+    const GROUP_DATA = {
+        140: "W149, W150, W151, W152", 141: "W1, W7, W12, W19", 142: "W2, W8, W20, W27", 143: "W3, W4, W13, W31",
+        144: "W5, W9, W21, W30", 145: "W6, W14, W15, W32", 146: "W10, W18, W24, W29", 147: "W11, W17, W22, W26",
+        148: "W16, W23, W25, W28", 149: "W33, W54, W60, W63", 150: "W34, W43, W51, W61", 151: "W35, W44, W48, W53",
+        152: "W36, W38, W47, W64", 153: "W37, HEX46, W57, W58", 154: "W39, W52, W56, W62", 155: "W40, W41, W42, W55",
+        156: "W45, W49, W50, W59", 157: "W65, W67, W78, W96", 158: "W66, W69, W76, W85", 159: "W68, W70, W84, W93",
+        160: "W71, W75, W82, W89", 161: "W72, W79, W86, W91", 162: "W73, W83, W90, W95", 163: "W74, W80, W87, W94",
+        164: "W77, W81, W88, W92", 165: "W97, W104, W110, W115", 166: "W98, W103, W108, W113", 167: "W99, W102, W109, W116",
+        168: "W100, W105, W107, W114", 169: "W101, W106, W111, W112", 170: "W117, W127, W129, W132", 171: "W118, W124, W126, W131",
+        172: "W119, W121, W122, W125", 173: "W120, W123, W128, W130", 174: "W133, W139, W143, W148", 175: "W134, W137, W142, W145",
+        176: "W135, W138, W144, W147", 177: "W136, W140, W141, W146", 178: "W153, W154, W155, W156", 179: "W157, W158, W159, W160",
+        18: "W85, W89, W93, W97", 19: "W101, W105, W109, W113", 20: "W104, W108, W112, W116", 21: "W117, W121, W125, W129"
+    };
 
     let castleNames = {};
     let historyLog = JSON.parse(localStorage.getItem('gvg_history_log')) || {};
@@ -102,14 +121,23 @@
 
     function setupGroupList() {
         const select = document.getElementById('groupSelect');
+        const display = document.getElementById('selectedWorldDisplay');
+        
+        const firstOpt = document.createElement('option');
+        firstOpt.value = ""; firstOpt.textContent = "-- グループを選択 --";
+        select.appendChild(firstOpt);
+
         Object.keys(GROUP_DATA).sort((a,b) => b-a).forEach(id => {
             const opt = document.createElement('option');
             opt.value = id;
             opt.textContent = `Group ${id} [${GROUP_DATA[id]}]`;
             select.appendChild(opt);
         });
+
         select.addEventListener('change', () => {
-            document.getElementById('selectedWorldDisplay').textContent = `World: ${GROUP_DATA[select.value] || '-'}`;
+            const val = select.value;
+            display.textContent = val ? `World: ${GROUP_DATA[val]}` : "World: -";
+            if (val) document.getElementById('groupManual').value = "";
         });
     }
 
@@ -158,9 +186,13 @@
             const id = row.CastleId;
             if (!historyLog[id]) historyLog[id] = { attack: '-', defense: '-', counter: '-', fallen: '-' };
 
+            // 侵攻開始 (攻撃P > 0 かつ 布告中)
             if (row.AttackPartyCount > 0 && row.State === 1 && historyLog[id].attack === '-') historyLog[id].attack = now;
+            // 防衛開始 (防衛P > 0)
             if (row.DefensePartyCount > 0 && historyLog[id].defense === '-') historyLog[id].defense = now;
+            // 反撃開始 (ステータスが 反撃)
             if (row.State === 3 && historyLog[id].counter === '-') historyLog[id].counter = now;
+            // 陥落時刻 (ステータスが 陥落)
             if (row.State === 2 && historyLog[id].fallen === '-') historyLog[id].fallen = now;
         });
         localStorage.setItem('gvg_history_log', JSON.stringify(historyLog));
@@ -195,29 +227,27 @@
         document.getElementById('tableContainer').innerHTML = html;
     }
 
-    // 自動更新の切り替え
     const autoBtn = document.getElementById('autoBtn');
-    const syncIndicator = document.getElementById('syncIndicator');
-
     autoBtn.addEventListener('click', () => {
         isAutoSync = !isAutoSync;
         if (isAutoSync) {
             autoBtn.classList.add('active');
-            autoBtn.innerHTML = '<span class="indicator active" id="syncIndicator"></span>AUTO SYNC ON';
-            updateData(); // 初回実行
-            syncTimer = setInterval(updateData, 1000); // 1秒ごとに実行
+            autoBtn.innerHTML = '<span class="indicator active"></span>AUTO SYNC ON';
+            updateData();
+            syncTimer = setInterval(updateData, 1000);
         } else {
             autoBtn.classList.remove('active');
-            autoBtn.innerHTML = '<span class="indicator" id="syncIndicator"></span>AUTO SYNC OFF';
+            autoBtn.innerHTML = '<span class="indicator"></span>AUTO SYNC OFF';
             clearInterval(syncTimer);
         }
     });
 
     document.getElementById('resetLogBtn').addEventListener('click', () => {
-        if (confirm('記録をすべて消去しますか？')) {
+        if (confirm('本日のタイムライン記録をすべてリセットしますか？')) {
             historyLog = {};
             localStorage.removeItem('gvg_history_log');
             if (!isAutoSync) document.getElementById('tableContainer').innerHTML = "";
+            else updateData();
         }
     });
 
