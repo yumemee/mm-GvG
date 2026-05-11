@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>▶ GRAND WAR MONITOR / HYBRID TRACKER</title>
+    <title>▶ GRAND WAR MONITOR / DAY-SEPARATED TRACKER</title>
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -27,7 +27,7 @@
             font-family: var(--mono); 
             font-size: 11px; 
             position: sticky; 
-            top: 135px; /* headerの高さに合わせて調整 */
+            top: 135px;
             z-index: 99; 
         }
         
@@ -70,7 +70,7 @@
 <body>
 
 <header id="header">
-    <h1>▶ GRAND WAR MONITOR / ALL GROUPS</h1>
+    <h1>▶ GRAND WAR MONITOR / DAY-SEPARATED</h1>
     <div class="controls">
         <div class="ctrl-group">
             <label>GROUP SELECTION (ID / WORLDS)</label>
@@ -110,7 +110,7 @@
 
 <div class="status-bar">
     <div class="day-tabs" id="dayTabs">
-        <span class="day-tab active" data-day="Sat">SAT</span>
+        <span class="day-tab" data-day="Sat">SAT</span>
         <span class="day-tab" data-day="Sun">SUN</span>
         <span class="day-tab" data-day="Tue">TUE</span>
         <span class="day-tab" data-day="Wed">WED</span>
@@ -148,11 +148,27 @@
     };
 
     let castleNames = {};
-    let historyLog = JSON.parse(localStorage.getItem('gvg_history_log')) || {};
     let isAutoSync = false;
     let syncTimer = null;
     let isFetching = false;
-    let currentDay = 'Sat';
+    
+    // 今日の曜日を取得して初期タブにする
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    let currentDay = dayNames[new Date().getDay()];
+    // APIが月曜日のデータを持たないことが多いため、月曜なら土曜をデフォルトに
+    if (currentDay === 'Mon') currentDay = 'Sat';
+
+    // 選択された曜日の記録を読み込む関数
+    function getHistory() {
+        const key = `gvg_history_log_${currentDay}`;
+        return JSON.parse(localStorage.getItem(key)) || {};
+    }
+
+    // 選択された曜日に記録を保存する関数
+    function saveHistory(data) {
+        const key = `gvg_history_log_${currentDay}`;
+        localStorage.setItem(key, JSON.stringify(data));
+    }
 
     function setupGroupList() {
         const select = document.getElementById('groupSelect');
@@ -206,7 +222,7 @@
             processHistory(data);
             renderTable(data);
             
-            document.getElementById('updateStatus').textContent = `SYNC COMPLETE: ${new Date().toLocaleTimeString()}`;
+            document.getElementById('updateStatus').textContent = `SYNC [${currentDay}] COMPLETE: ${new Date().toLocaleTimeString()}`;
         } catch (e) {
             document.getElementById('updateStatus').textContent = "FETCH ERROR";
         } finally {
@@ -216,6 +232,8 @@
 
     function processHistory(data) {
         const now = new Date().toLocaleTimeString('ja-JP', { hour12: false });
+        let historyLog = getHistory();
+
         data.forEach(row => {
             const id = row.CastleId;
             if (!historyLog[id]) historyLog[id] = { attack: '-', defense: '-', counter: '-', fallen: '-' };
@@ -224,7 +242,7 @@
             if (row.State === 3 && historyLog[id].counter === '-') historyLog[id].counter = now;
             if (row.State === 2 && historyLog[id].fallen === '-') historyLog[id].fallen = now;
         });
-        localStorage.setItem('gvg_history_log', JSON.stringify(historyLog));
+        saveHistory(historyLog);
     }
 
     function renderTable(data) {
@@ -234,6 +252,7 @@
             <th style="color:var(--battle)">反撃開始</th><th style="color:var(--fallen)">陥落時刻</th>
         </tr></thead><tbody>`;
         
+        const historyLog = getHistory();
         data.sort((a, b) => a.CastleId - b.CastleId);
         data.forEach(row => {
             const id = row.CastleId;
@@ -256,14 +275,21 @@
         document.getElementById('tableContainer').innerHTML = html;
     }
 
-    document.querySelectorAll('.day-tab').forEach(tab => {
-        tab.addEventListener('click', () => {
-            document.querySelectorAll('.day-tab').forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-            currentDay = tab.dataset.day;
-            updateData();
+    // タブ切り替えの初期化
+    function initTabs() {
+        document.querySelectorAll('.day-tab').forEach(tab => {
+            if (tab.dataset.day === currentDay) tab.classList.add('active');
+            
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.day-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                currentDay = tab.dataset.day;
+                
+                // 自動更新中でも、タブを切り替えたら即座にその曜日のデータを取得
+                updateData();
+            });
         });
-    });
+    }
 
     const autoBtn = document.getElementById('autoBtn');
     autoBtn.addEventListener('click', () => {
@@ -281,15 +307,16 @@
     });
 
     document.getElementById('resetLogBtn').addEventListener('click', () => {
-        if (confirm('本日のタイムライン記録をすべてリセットしますか？')) {
-            historyLog = {};
-            localStorage.removeItem('gvg_history_log');
+        if (confirm(`【${currentDay}】の記録をリセットしますか？\n他の曜日の記録は消えません。`)) {
+            const key = `gvg_history_log_${currentDay}`;
+            localStorage.removeItem(key);
             updateData();
         }
     });
 
     async function init() {
         setupGroupList();
+        initTabs();
         await fetchCastleNames();
     }
     init();
