@@ -15,30 +15,37 @@
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 13px; min-height: 100vh; }
-        header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 16px; position: sticky; top: 0; z-index: 100; }
-        .status-bar { background: var(--surface); border-bottom: 1px solid var(--border2); padding: 5px 16px; display: flex; align-items: center; gap: 14px; font-family: var(--mono); font-size: 11px; color: var(--muted); position: sticky; top: 100px; z-index: 99; }
+        header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 16px; position: sticky; top: 0; z-index: 100; }
+        .status-bar { background: var(--surface); border-bottom: 1px solid var(--border2); padding: 5px 16px; display: flex; align-items: center; gap: 14px; font-family: var(--mono); font-size: 11px; color: var(--muted); position: sticky; top: 120px; z-index: 99; }
         .day-tabs { display: flex; gap: 4px; }
         .day-tab { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); padding: 2px 8px; border-radius: 3px; cursor: pointer; font-family: var(--mono); font-size: 10px; }
         .day-tab.active { border-color: var(--accent); color: var(--accent); background: #1a2030; }
-        h1 { font-family: var(--mono); font-size: 13px; letter-spacing: 2px; color: var(--accent); margin-bottom: 10px; }
-        .controls { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-        .ctrl-group { display: flex; align-items: center; gap: 5px; }
-        label { font-size: 11px; color: var(--muted); }
-        select, input[type=number] { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 5px 8px; font-size: 12px; font-family: var(--sans); border-radius: 3px; outline: none; }
-        button { background: var(--accent); border: 1px solid var(--accent); color: #fff; padding: 5px 14px; font-size: 12px; font-family: var(--sans); border-radius: 3px; cursor: pointer; font-weight: bold; }
+        h1 { font-family: var(--mono); font-size: 14px; letter-spacing: 2px; color: var(--accent); margin-bottom: 12px; border-left: 3px solid var(--accent); padding-left: 10px; }
+        .controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .ctrl-group { display: flex; align-items: center; gap: 6px; }
+        label { font-size: 11px; color: var(--muted); font-weight: bold; text-transform: uppercase; }
+        select, input[type=number] { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 6px 10px; font-size: 12px; font-family: var(--sans); border-radius: 4px; outline: none; transition: border-color 0.2s; }
+        select:focus, input[type=number]:focus { border-color: var(--accent); }
+        button { background: var(--accent); border: 1px solid var(--accent); color: #fff; padding: 6px 16px; font-size: 12px; font-family: var(--sans); border-radius: 4px; cursor: pointer; font-weight: bold; }
+        button:hover { opacity: 0.9; }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
-        #clock { margin-left: auto; font-size: 13px; color: var(--accent); font-weight: bold; }
+        #clock { margin-left: auto; font-size: 13px; color: var(--accent); font-weight: bold; font-family: var(--mono); }
         .main { padding: 12px 16px; }
-        #tableContainer { width: 100%; overflow-x: auto; }
+        #tableContainer { width: 100%; overflow-x: auto; border-radius: 4px; background: var(--surface); border: 1px solid var(--border); }
         table { width: 100%; border-collapse: separate; border-spacing: 0; font-family: var(--mono); font-size: 12px; min-width: 800px; }
-        thead th { background: var(--surface2); padding: 10px; text-align: left; color: var(--muted); position: sticky; top: 0; }
-        tbody td { padding: 8px 10px; border-bottom: 1px solid var(--border2); }
+        thead th { background: var(--surface2); padding: 12px 10px; text-align: left; color: var(--muted); font-size: 11px; position: sticky; top: 0; z-index: 1; border-bottom: 1px solid var(--border); }
+        tbody td { padding: 10px; border-bottom: 1px solid var(--border2); }
+        tbody tr:hover td { background: rgba(59, 130, 246, 0.05); }
         .cid { color: var(--accent); font-weight: bold; margin-right: 8px; }
-        .badge { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 10px; font-weight: bold; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; }
         .s-battle { background: #3d2e00; color: var(--battle); }
         .s-fallen { background: #3d1000; color: var(--fallen); }
         .s-defense { background: #0d3020; color: var(--defense); }
-        .loading { text-align: center; padding: 40px; color: var(--muted); }
+        .loading { text-align: center; padding: 60px; color: var(--muted); font-family: var(--mono); font-size: 14px; }
+        
+        /* 入力モード切替用 */
+        .manual-input { display: none; }
+        .manual-input.show { display: inline-block; }
     </style>
 </head>
 <body>
@@ -46,10 +53,20 @@
 <header id="header">
     <h1>▶ GRAND WAR MONITOR / TAMAMO API</h1>
     <div class="controls">
+        <!-- グループ選択ドロップダウン -->
         <div class="ctrl-group">
             <label>Group</label>
-            <input type="number" id="groupInput" value="19" min="1">
+            <select id="groupSelect">
+                <option value="19">Group 19 (W101...)</option>
+                <option value="20">Group 20 (W104...)</option>
+                <option value="21">Group 21</option>
+                <option value="165">Group 165</option>
+                <option value="170">Group 170</option>
+                <option value="manual">直接入力...</option>
+            </select>
+            <input type="number" id="groupManual" class="manual-input" placeholder="IDを入力" min="1" style="width: 80px;">
         </div>
+
         <div class="ctrl-group">
             <label>Class</label>
             <select id="classSelect">
@@ -58,6 +75,7 @@
                 <option value="1">Elite</option>
             </select>
         </div>
+
         <div class="ctrl-group">
             <label>Block</label>
             <select id="blockSelect">
@@ -67,7 +85,7 @@
                 <option value="3">Block D</option>
             </select>
         </div>
-        <button id="updateBtn">データ更新</button>
+        <button id="updateBtn">SCAN START</button>
     </div>
 </header>
 
@@ -80,13 +98,13 @@
         <span class="day-tab" data-day="Thu">THU</span>
         <span class="day-tab" data-day="Fri">FRI</span>
     </div>
-    <span id="updateStatus">Ready</span>
-    <span id="clock">--:--:--</span>
+    <span id="updateStatus">SYSTEM READY</span>
+    <span id="clock">00:00:00</span>
 </div>
 
 <div class="main">
     <div id="tableContainer">
-        <div class="loading">Please update to fetch data...</div>
+        <div class="loading">SELECT PARAMETERS AND SCAN</div>
     </div>
 </div>
 
@@ -101,6 +119,19 @@
     setInterval(() => {
         document.getElementById('clock').textContent = new Date().toLocaleTimeString('ja-JP', { hour12: false });
     }, 1000);
+
+    // グループ選択の制御
+    const groupSelect = document.getElementById('groupSelect');
+    const groupManual = document.getElementById('groupManual');
+
+    groupSelect.addEventListener('change', () => {
+        if (groupSelect.value === 'manual') {
+            groupManual.classList.add('show');
+            groupManual.focus();
+        } else {
+            groupManual.classList.remove('show');
+        }
+    });
 
     // 拠点データ取得
     async function fetchCastleNames() {
@@ -121,25 +152,33 @@
         const container = document.getElementById('tableContainer');
         
         btn.disabled = true;
-        status.textContent = "Fetching...";
+        status.textContent = "SCANNING...";
         
-        const group = document.getElementById('groupInput').value;
+        // グループIDの決定（ドロップダウンか手入力か）
+        const group = groupSelect.value === 'manual' ? groupManual.value : groupSelect.value;
         const gClass = document.getElementById('classSelect').value;
         const block = document.getElementById('blockSelect').value;
         
+        if (!group) {
+            alert("GroupIDを指定してください");
+            btn.disabled = false;
+            status.textContent = "READY";
+            return;
+        }
+
         try {
             const url = `${LOG_API}?Group=${group}&Class=${gClass}&Block=${block}&Week=${currentDay}`;
             const res = await fetch(url);
             const data = await res.json();
             
             if (!data || data.length === 0) {
-                container.innerHTML = '<div class="loading">データが見つかりませんでした</div>';
+                container.innerHTML = `<div class="loading">NO DATA FOUND (G:${group} / ${currentDay})</div>`;
             } else {
                 renderTable(data);
             }
-            status.textContent = `Last Update: ${new Date().toLocaleTimeString()}`;
+            status.textContent = `SYNC COMPLETE: ${new Date().toLocaleTimeString()}`;
         } catch (e) {
-            status.textContent = "Error fetching data";
+            status.textContent = "CONNECTION ERROR";
             console.error(e);
         } finally {
             btn.disabled = false;
@@ -150,33 +189,32 @@
         let html = `<table>
             <thead>
                 <tr>
-                    <th>拠ID</th>
+                    <th>ID</th>
                     <th>拠点名</th>
-                    <th>現在の所有者</th>
-                    <th>攻撃者</th>
-                    <th>状態</th>
+                    <th>占有ギルド</th>
+                    <th>攻撃ギルド</th>
+                    <th>ステータス</th>
                     <th>防衛P</th>
                     <th>攻撃P</th>
-                    <th>最終更新(JST)</th>
+                    <th>最終更新</th>
                 </tr>
             </thead>
             <tbody>`;
         
-        // CastleID順にソート
         data.sort((a, b) => a.CastleId - b.CastleId);
 
         data.forEach(row => {
-            const stateLabel = row.State === 1 ? '布告' : row.State === 2 ? '陥落' : row.State === 3 ? '反撃' : '安定';
+            const stateLabel = row.State === 1 ? '宣戦布告' : row.State === 2 ? '陥落' : row.State === 3 ? '反撃中' : '安定';
             const stateClass = row.State === 1 ? 's-battle' : row.State === 2 ? 's-fallen' : row.State === 4 ? 's-defense' : '';
             
             html += `<tr>
                 <td><span class="cid">${row.CastleId}</span></td>
-                <td>${castleNames[row.CastleId] || 'Unknown'}</td>
-                <td>${row.GuildName || '<span style="color:var(--muted)">-</span>'}</td>
-                <td>${row.AttackerGuildName || '<span style="color:var(--muted)">-</span>'}</td>
+                <td><strong>${castleNames[row.CastleId] || '???'}</strong></td>
+                <td>${row.GuildName || '-'}</td>
+                <td>${row.AttackerGuildName || '-'}</td>
                 <td><span class="badge ${stateClass}">${stateLabel}</span></td>
-                <td style="color:var(--defense)">${row.DefensePartyCount}</td>
-                <td style="color:var(--attack)">${row.AttackPartyCount}</td>
+                <td style="color:var(--defense); font-weight:bold;">${row.DefensePartyCount}</td>
+                <td style="color:var(--attack); font-weight:bold;">${row.AttackPartyCount}</td>
                 <td style="color:var(--muted); font-size:11px;">${row.LastUpdate}</td>
             </tr>`;
         });
@@ -197,10 +235,9 @@
 
     document.getElementById('updateBtn').addEventListener('click', updateData);
 
-    // 初期化
     async function init() {
         await fetchCastleNames();
-        updateData();
+        // 初期状態では自動で読み込まず待機
     }
     
     init();
