@@ -20,8 +20,9 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 13px; min-height: 100vh; }
         
-        header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 16px; position: sticky; top: 0; z-index: 101; }
-        .sticky-nav { position: sticky; top: 195px; z-index: 100; background: var(--bg); }
+        /* 画面上部の固定メニュー */
+        header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 16px; position: relative; z-index: 101; }
+        .sticky-nav { position: sticky; top: 0; z-index: 100; background: var(--bg); }
 
         h1 { font-family: var(--mono); font-size: 14px; letter-spacing: 2px; color: var(--accent); margin-bottom: 12px; text-align: center; }
 
@@ -55,9 +56,11 @@
 
         .main { padding: 10px; }
         #tableContainer { width: 100%; overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; }
-        table { width: 100%; border-collapse: separate; border-spacing: 0; font-family: var(--mono); font-size: 12px; min-width: 1150px; }
-        thead th { background: var(--surface2); padding: 12px 10px; text-align: left; color: var(--muted); position: sticky; top: 0; border-bottom: 1px solid var(--border); z-index: 2; }
-        tbody td { padding: 10px; border-bottom: 1px solid var(--border2); white-space: nowrap; }
+        
+        /* テーブルの幅固定 */
+        table { width: 100%; border-collapse: separate; border-spacing: 0; font-family: var(--mono); font-size: 12px; min-width: 1120px; table-layout: fixed; }
+        thead th { background: var(--surface2); padding: 12px 6px; text-align: left; color: var(--muted); position: sticky; top: 0; border-bottom: 1px solid var(--border); z-index: 2; overflow: hidden; white-space: nowrap; }
+        tbody td { padding: 10px 6px; border-bottom: 1px solid var(--border2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         .c-defense { color: var(--defense) !important; }
         .c-attack { color: var(--attack) !important; }
@@ -73,9 +76,9 @@
         .s-fallen { background: rgba(249, 115, 22, 0.15); color: var(--fallen); border: 1px solid var(--fallen); }
 
         @media (min-width: 768px) {
-            .controls { grid-template-columns: 1fr 1fr 1fr 1fr 2fr 1fr 1fr; align-items: flex-end; }
+            /* MODEを削除した分、6列のグリッドに変更してレイアウトを最適化 */
+            .controls { grid-template-columns: 1fr 1fr 1fr 2fr 1fr 1fr; align-items: flex-end; }
             .world-row, .btn-group { grid-column: auto; margin-top: 0; }
-            .sticky-nav { top: 110px; } 
         }
     </style>
 </head>
@@ -84,7 +87,6 @@
 <header>
     <h1>▶ GRAND WAR MONITOR [GLOBAL]</h1>
     <div class="controls">
-        <div class="ctrl-group"><label>MODE</label><select id="modeSelect" disabled><option value="global" selected>Global</option></select></div>
         <div class="ctrl-group"><label>GROUP</label><select id="groupSelect"></select></div>
         <div class="ctrl-group"><label>CLASS</label><select id="classSelect"><option value="3" selected>G-Master</option><option value="2">Expert</option><option value="1">Elite</option></select></div>
         <div class="ctrl-group"><label>BLOCK</label><select id="blockSelect"><option value="0">A</option><option value="1" selected>B</option><option value="2">C</option><option value="3">D</option></select></div>
@@ -139,13 +141,12 @@
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     let currentDay = dayNames[new Date().getDay()] === 'Mon' ? 'Sat' : dayNames[new Date().getDay()];
 
-    // --- WebSocket (mentemori.icu) 用の変数群 ---
+    // WebSocket用の変数
     let ws = null;
-    let wsGuildData = {}; // ギルドIDと名前の紐付け辞書
-    let wsCastleData = []; // 拠点ごとの状態データ（1〜21）
-    let combinedData = []; // 合体させた最終データ
+    let wsGuildData = {};
+    let wsCastleData = [];
 
-    // ★メンテもりもりの暗号解読用関数（ご提示いただいたソースを元に再現）
+    // 暗号解読用関数
     const parseHeader = (v, offset) => {
         let a = v.getUint32(offset, true);
         return { value: { WorldId: a >>> 19, GroupId: (a >>> 8) & 255, Class: (a >>> 16) & 7, Block: (a >>> 5) & 7, CastleId: a & 31 }, offset: offset + 4 };
@@ -164,91 +165,105 @@
         }, offset: offset + 20 };
     };
 
+    // 拠点名の取得
     async function fetchCastleNames() {
         try {
-            const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(CASTLE_API + '?_t=' + Date.now())}`);
-            const data = await res.json();
-            if (data.globalGvG) {
-                Object.entries(data.globalGvG).forEach(([name, id]) => { castleNames[String(id)] = name; });
-            } else if (Array.isArray(data)) {
-                data.forEach(item => { castleNames[String(item.id)] = item.name; });
+            const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(CASTLE_API + '?_t=' + Date.now())}`);
+            if(res.ok) {
+                const data = await res.json();
+                if (data.globalGvG) {
+                    Object.entries(data.globalGvG).forEach(([name, id]) => { castleNames[String(id)] = name; });
+                }
             }
-        } catch (e) { console.error("Castle names fetch error, using fallback map."); }
+        } catch (e) { console.warn("Castle names fetch skipped."); }
     }
 
-    // ★WebSocketの接続とデータ合体処理
-    function connectWebSocket(group, classId, blockId, logDataArray) {
-        if (ws) { ws.close(); } // 既存の接続があれば切る
-        wsGuildData = {};
-        wsCastleData = Array(22).fill({}); // 1〜21用
+    // データを取得して合体させる
+    async function updateData() {
+        const group = document.getElementById('groupManual').value || document.getElementById('groupSelect').value;
+        const classId = document.getElementById('classSelect').value;
+        const blockId = document.getElementById('blockSelect').value;
+        const statusEl = document.getElementById('updateStatus');
+        if (!group) return;
 
-        ws = new WebSocket("wss://api.mentemori.icu/gvg");
-        ws.binaryType = "arraybuffer";
+        statusEl.textContent = "FETCHING...";
+        
+        const params = new URLSearchParams({
+            Group: group, Class: classId, Block: blockId, Week: currentDay, _t: Date.now()
+        });
 
-        ws.onopen = () => {
-            // 対象グループのデータを要求する暗号送信
-            let buffer = new ArrayBuffer(4);
-            let view = new DataView(buffer);
-            let requestVal = (0 << 19) | (classId << 16) | (group << 8) | (blockId << 5) | 0; // WorldId=0
-            view.setUint32(0, requestVal, true);
-            ws.send(buffer);
-        };
+        let logDataArray = [];
+        
+        try {
+            const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(BASE_LOG_API + '?' + params.toString())}`).catch(()=>null);
+            if (res && res.ok) {
+                const json = await res.json();
+                logDataArray = json.data?.Log || [];
+            }
+        } catch (e) {
+            console.warn("Log API fallback");
+        }
 
-        ws.onmessage = (event) => {
-            let v = new DataView(event.data);
-            let offset = 0;
+        try {
+            if (ws) ws.close();
+            wsGuildData = {};
+            wsCastleData = [];
+
+            ws = new WebSocket("wss://api.mentemori.icu/gvg");
+            ws.binaryType = "arraybuffer";
+
+            ws.onopen = () => {
+                let buffer = new ArrayBuffer(4);
+                let view = new DataView(buffer);
+                let requestVal = (0 << 19) | (Number(classId) << 16) | (Number(group) << 8) | (Number(blockId) << 5) | 0;
+                view.setUint32(0, requestVal, true);
+                ws.send(buffer);
+            };
+
+            ws.onmessage = (event) => {
+                let v = new DataView(event.data);
+                let offset = 0;
+                while(offset < v.byteLength) {
+                    let header = parseHeader(v, offset);
+                    let stream = header.value;
+                    offset = header.offset;
+
+                    if(stream.GroupId != group || stream.Class != classId || stream.Block != blockId) break;
+
+                    if (stream.CastleId === 0) {
+                        let guild = parseGuild(v, offset, stream.WorldId);
+                        offset = guild.offset;
+                        wsGuildData[guild.value.GuildId] = guild.value.GuildName;
+                    } else if (stream.CastleId <= 21) {
+                        let castle = parseCastle(v, offset);
+                        offset = castle.offset;
+                        wsCastleData[stream.CastleId] = castle.value;
+                    } else {
+                        break;
+                    }
+                }
+                combineAndRender(logDataArray);
+            };
             
-            while(offset < v.byteLength) {
-                let header = parseHeader(v, offset);
-                let stream = header.value;
-                offset = header.offset;
-
-                // 要求したグループ・クラス・ブロックと一致するかチェック
-                if(stream.GroupId != group || stream.Class != classId || stream.Block != blockId) {
-                    break; // 違うデータなら無視
-                }
-
-                if (stream.CastleId === 0) {
-                    // ギルド名の辞書登録
-                    let guild = parseGuild(v, offset, stream.WorldId);
-                    offset = guild.offset;
-                    wsGuildData[guild.value.GuildId] = guild.value.GuildName;
-                } else if (stream.CastleId <= 21) {
-                    // 各拠点の状態データ
-                    let castle = parseCastle(v, offset);
-                    offset = castle.offset;
-                    wsCastleData[stream.CastleId] = castle.value;
-                } else {
-                    break; // その他のデータは一旦スキップ
-                }
-            }
-
-            // --- Tamamoのログデータと、今取得したWebSocketデータを合体させる ---
-            combineAndRender(logDataArray);
-        };
-        
-        ws.onerror = () => { console.error("WS Error"); document.getElementById('updateStatus').textContent = "WS ERROR"; };
+            statusEl.textContent = "OK (" + currentDay + "): " + new Date().toLocaleTimeString();
+        } catch (e) { 
+            statusEl.textContent = "WS ERROR"; 
+        }
     }
 
-    // データ合体＆描画
+    // データ合体・テーブル描画
     function combineAndRender(logDataArray) {
-        combinedData = [];
+        let combinedData = [];
         
-        // 1番から21番までの拠点を作る
         for (let i = 1; i <= 21; i++) {
-            // Tamamoのログ情報があれば取得
             let logInfo = logDataArray.find(d => String(d.CastleID) === String(i)) || {};
-            // メンテもりもりのリアルタイム情報があれば取得
             let wsInfo = wsCastleData[i] || {};
 
             let dGuildName = wsGuildData[wsInfo.GuildId] || "-";
             let aGuildName = wsGuildData[wsInfo.AttackerGuildId] || "-";
             
-            // Stateによって防衛と侵攻が逆転する場合の処理（元ソースの再現）
             if (wsInfo.GvgCastleState == 2 || wsInfo.GvgCastleState == 3) {
-                let temp = dGuildName;
-                dGuildName = aGuildName;
-                aGuildName = temp;
+                let temp = dGuildName; dGuildName = aGuildName; aGuildName = temp;
             }
 
             combinedData.push({
@@ -264,65 +279,34 @@
             });
         }
 
-        renderTable(combinedData);
-        updateGuildSummary(combinedData);
-    }
-
-    async function updateData() {
-        const group = document.getElementById('groupManual').value || document.getElementById('groupSelect').value;
-        const classId = document.getElementById('classSelect').value;
-        const blockId = document.getElementById('blockSelect').value;
-        const statusEl = document.getElementById('updateStatus');
-        if (!group) return;
-
-        statusEl.textContent = "FETCHING...";
-        
-        const params = new URLSearchParams({
-            Group: group, Class: classId, Block: blockId, Week: currentDay, _t: Date.now()
-        });
-
-        try {
-            // 1. まずTamamoのログ（時間）を取得
-            const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(BASE_LOG_API + '?' + params.toString())}`);
-            const json = await res.json();
-            const logDataArray = json.data?.Log || [];
-
-            // 2. 続けてメンテもりもりのWebSocketに接続してギルドとPT数を取得・合体
-            connectWebSocket(Number(group), Number(classId), Number(blockId), logDataArray);
-
-            statusEl.textContent = "OK (" + currentDay + "): " + new Date().toLocaleTimeString();
-        } catch (e) { 
-            statusEl.textContent = "API ERROR"; 
-        }
-    }
-
-    function renderTable(data) {
-        let html = `<table><thead><tr>
-            <th>ID</th><th>拠点名</th><th class="c-defense">防衛ギルド</th><th class="c-defense" style="text-align:center;">防衛PT数</th><th class="c-attack">侵攻ギルド</th><th>状態</th>
+        let html = `<table>
+            <colgroup>
+                <col style="width: 40px;">   <col style="width: 120px;">  <col style="width: 150px;">  <col style="width: 110px;">  <col style="width: 150px;">  <col style="width: 60px;">   <col style="width: 120px;">  <col style="width: 120px;">  <col style="width: 120px;">  <col style="width: 120px;">  </colgroup>
+            <thead><tr>
+            <th>ID</th><th>拠点名</th><th class="c-defense">防衛ギルド</th><th style="text-align:center;">侵攻/防衛PT</th><th class="c-attack">侵攻ギルド</th><th>状態</th>
             <th class="c-defense">防衛開始</th><th class="c-attack">攻撃開始</th><th class="c-fallen">陥落時刻</th><th class="c-counter">反撃時刻</th>
         </tr></thead><tbody>`;
 
-        data.sort((a, b) => a.CastleID - b.CastleID).forEach(row => {
+        combinedData.sort((a, b) => a.CastleID - b.CastleID).forEach(row => {
             const id = String(row.CastleID);
-            const dGuild = row.DefenseGuildName || "-";
-            const aGuild = row.AttackGuildName || "-";
-            const dParty = row.DefensePartyCount || "0";
             const cName = castleNames[id] || `拠点 ${id}`;
             
             let label = '確定', sClass = 's-defense';
             if (row.FallenTime !== "-") { 
                 label = '陥落'; sClass = 's-fallen'; 
-            } else if (row.AttackTime !== "-" || (aGuild !== "-")) { 
+            } else if (row.AttackTime !== "-" || (row.AttackGuildName !== "-")) { 
                 label = '宣戦'; sClass = 's-battle'; 
             }
 
             html += `<tr>
-                <td style="color:var(--accent); font-weight:bold;">${id}</td>
+                <td style="color:var(--accent); font-weight:bold; text-align:center;">${id}</td>
                 <td><strong>${cName}</strong></td>
-                <td class="c-defense">${dGuild}</td>
-                <td class="c-defense" style="text-align:center;"><strong>${dParty}</strong></td>
-                <td class="c-attack">${aGuild}</td>
-                <td><span class="badge ${sClass}">${label}</span></td>
+                <td class="c-defense">${row.DefenseGuildName}</td>
+                <td style="text-align:center; font-family:var(--mono);">
+                    <strong class="c-attack">${row.AttackPartyCount}</strong><span style="color:var(--muted)"> / </span><strong class="c-defense">${row.DefensePartyCount}</strong>
+                </td>
+                <td class="c-attack">${row.AttackGuildName}</td>
+                <td style="text-align:center;"><span class="badge ${sClass}">${label}</span></td>
                 <td class="time-cell c-defense">${row.DefenseTime}</td>
                 <td class="time-cell c-attack">${row.AttackTime}</td>
                 <td class="time-cell c-fallen">${row.FallenTime}</td>
@@ -330,6 +314,7 @@
             </tr>`;
         });
         document.getElementById('tableContainer').innerHTML = html + `</tbody></table>`;
+        updateGuildSummary(combinedData);
     }
 
     function updateGuildSummary(data) {
