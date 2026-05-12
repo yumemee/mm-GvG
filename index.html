@@ -106,7 +106,9 @@
     </div>
     <div class="guild-summary" id="guildSummary"><div class="summary-label">防衛パーティ数</div></div>
 </div>
-
+<div id="debugOutput" style="color: #eab308; font-size: 11px; padding: 10px; background: rgba(0,0,0,0.5); word-break: break-all;">
+    ※ここに実際のデータ構造が表示されます（確認後はお教えください）
+</div>
 <div class="main"><div id="tableContainer"></div></div>
 
 <script>
@@ -174,6 +176,14 @@
             const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(BASE_LOG_API + '?' + params.toString())}`);
             const json = await res.json();
             const logData = json.data?.Log || [];
+
+            // ★ デバッグ用：取得したデータの最初の1拠点分の生データを画面に表示
+            if(logData.length > 0) {
+                const debugDiv = document.getElementById('debugOutput');
+                if(debugDiv) {
+                    debugDiv.textContent = "【デバッグ情報】 " + JSON.stringify(logData[0]);
+                }
+            }
 
             renderTable(logData);
             updateGuildSummary(logData);
