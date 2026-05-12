@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>▶ GRAND WAR MONITOR </title>
+    <title>▶ GRAND WAR MONITOR / FINAL FIX</title>
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -31,7 +31,7 @@
         label { font-size: 9px; color: var(--muted); font-weight: bold; white-space: nowrap; }
         select, input { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 8px 4px; font-size: 11px; border-radius: 4px; outline: none; width: 100%; }
         
-        .world-info { font-size: 10px; color: var(--accent); background: rgba(59, 130, 246, 0.1); padding: 4px; border-radius: 4px; margin-top: 4px; text-align: center; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .world-info { font-size: 10px; color: var(--accent); background: rgba(59, 130, 246, 0.1); padding: 4px; border-radius: 4px; margin-top: 4px; text-align: center; display: block; min-height: 1.2em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
         .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         button { border: none; color: #fff; padding: 8px; font-size: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; height: 35px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
@@ -48,7 +48,7 @@
         
         .status-info { display: flex; justify-content: space-between; align-items: center; width: 100%; }
         #clock { font-family: var(--mono); font-weight: bold; color: var(--accent); font-size: 13px; }
-        #updateStatus { font-size: 10px; color: #ef4444; font-weight: bold; } /* エラー時に目立つ色 */
+        #updateStatus { font-size: 10px; font-weight: bold; }
 
         .guild-summary { background: var(--surface2); border-bottom: 1px solid var(--border); padding: 6px 16px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
         .summary-label { font-size: 10px; font-weight: bold; color: var(--muted); background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 3px; border: 1px solid var(--border2); display: flex; align-items: center; gap: 5px; }
@@ -156,7 +156,22 @@
 <script>
     const LOG_API = 'https://api.tamamo.dev/GvGLog';
     const CASTLE_API = 'https://tamamo.dev/assets/Resource/CastleId.json';
-    const GROUP_DATA = { 141: "W1, W7, W12, W19", 142: "W2, W8, W20, W27", 143: "W3, W4, W13, W31", 144: "W5, W9, W21, W30", 145: "W6, W14, W15, W32", 146: "W10, W18, W24, W29", 147: "W11, W17, W22, W26", 148: "W16, W23, W25, W28", 149: "W33, W54, W60, W63", 150: "W34, W43, W51, W61", 151: "W35, W44, W48, W53", 152: "W36, W38, W47, W64", 153: "W37, W46, W57, W58", 154: "W39, W52, W56, W62", 155: "W40, W41, W42, W55", 156: "W45, W49, W50, W59", 157: "W65, W67, W78, W96", 158: "W66, W69, W76, W85", 159: "W68, W70, W84, W93", 160: "W71, W75, W82, W89", 161: "W72, W79, W86, W91", 162: "W73, W83, W90, W95", 163: "W74, W80, W87, W94", 164: "W77, W81, W88, W92", 165: "W97, W104, W110, W115", 166: "W98, W103, W108, W113", 167: "W99, W102, W109, W116", 168: "W100, W105, W107, W114", 169: "W101, W106, W111, W112", 170: "W117, W127, W129, W132", 171: "W118, W124, W126, W131", 172: "W119, W121, W122, W125", 173: "W120, W123, W128, W130", 174: "W133, W139, W143, W148", 175: "W134, W137, W142, W145", 176: "W135, W138, W144, W147", 177: "W136, W140, W141, W146", 178: "W153, W154, W155, W156", 179: "W157, W158, W159, W160" };
+    
+    const GROUP_DATA = { 
+        141: "W1, W7, W12, W19", 142: "W2, W8, W20, W27", 143: "W3, W4, W13, W31", 
+        144: "W5, W9, W21, W30", 145: "W6, W14, W15, W32", 146: "W10, W18, W24, W29", 
+        147: "W11, W17, W22, W26", 148: "W16, W23, W25, W28", 149: "W33, W54, W60, W63", 
+        150: "W34, W43, W51, W61", 151: "W35, W44, W48, W53", 152: "W36, W38, W47, W64", 
+        153: "W37, W46, W57, W58", 154: "W39, W52, W56, W62", 155: "W40, W41, W42, W55", 
+        156: "W45, W49, W50, W59", 157: "W65, W67, W78, W96", 158: "W66, W69, W76, W85", 
+        159: "W68, W70, W84, W93", 160: "W71, W75, W82, W89", 161: "W72, W79, W86, W91", 
+        162: "W73, W83, W90, W95", 163: "W74, W80, W87, W94", 164: "W77, W81, W88, W92", 
+        165: "W97, W104, W110, W115", 166: "W98, W103, W108, W113", 167: "W99, W102, W109, W116", 
+        168: "W100, W105, W107, W114", 169: "W101, W106, W111, W112", 170: "W117, W127, W129, W132", 
+        171: "W118, W124, W126, W131", 172: "W119, W121, W122, W125", 173: "W120, W123, W128, W130", 
+        174: "W133, W139, W143, W148", 175: "W134, W137, W142, W145", 176: "W135, W138, W144, W147", 
+        177: "W136, W140, W141, W146", 178: "W153, W154, W155, W156", 179: "W157, W158, W159, W160" 
+    };
 
     let castleNames = {};
     let isFetching = false;
@@ -170,14 +185,21 @@
     function setupGroupList() {
         const select = document.getElementById('groupSelect');
         const display = document.getElementById('selectedWorldDisplay');
+        
         select.innerHTML = '<option value="">-- SELECT --</option>';
         Object.keys(GROUP_DATA).sort((a,b) => b-a).forEach(id => {
             const opt = document.createElement('option');
             opt.value = id; opt.textContent = `${id}`;
             select.appendChild(opt);
         });
+
+        // 修正ポイント：セレクトボックス変更時に詳細テキストを表示
         select.addEventListener('change', () => {
-            display.textContent = select.value ? `World: ${GROUP_DATA[select.value]}` : "World: -";
+            if (select.value && GROUP_DATA[select.value]) {
+                display.textContent = `World: ${GROUP_DATA[select.value]}`;
+            } else {
+                display.textContent = "World: -";
+            }
         });
     }
 
@@ -216,6 +238,7 @@
             
             if (!data || data.length === 0) {
                 statusEl.textContent = "データ空(ID/曜日違い?)";
+                statusEl.style.color = "#f97316";
                 document.getElementById('tableContainer').innerHTML = "<p style='text-align:center; padding:40px; color:var(--muted);'>データが見つかりませんでした。</p>";
                 return;
             }
