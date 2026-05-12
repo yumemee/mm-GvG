@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>▶ GRAND WAR MONITOR / FINAL FIXED</title>
+    <title>▶ GRAND WAR MONITOR / SCHED OPTIMIZED</title>
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -53,7 +53,7 @@
 <body>
 
 <header>
-    <h1>▶ GRAND WAR MONITOR [GLOBAL]</h1>
+    <h1>▶ GRAND WAR MONITOR [SCHED-SYNC]</h1>
     <div class="controls">
         <div class="ctrl-group"><label>GROUP</label><select id="groupSelect"></select></div>
         <div class="ctrl-group"><label>CLASS</label><select id="classSelect"><option value="3" selected>G-Master</option><option value="2">Expert</option><option value="1">Elite</option></select></div>
@@ -87,11 +87,13 @@
 
     function getJSTDay() {
         const jstNow = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Tokyo"}));
-        const adjusted = new Date(jstNow.getTime() - (5 * 60 * 60 * 1000));
-        return dayNames[adjusted.getDay()];
+        // AM 4:00までは「前日の曜日」として計算する
+        const adjusted = new Date(jstNow.getTime() - (4 * 60 * 60 * 1000));
+        const day = dayNames[adjusted.getDay()];
+        return day === 'Mon' ? 'Sat' : day;
     }
 
-    let currentDay = getJSTDay() === 'Mon' ? 'Sat' : getJSTDay();
+    let currentDay = getJSTDay();
     let ws = null, wsGuildData = {}, wsCastleData = [], castleNames = {};
 
     async function fetchCastleNames() {
@@ -162,61 +164,41 @@
         };
     }
 
-    // --- ここからが修正された統合ロジック ---
     function renderTable(logData, isLive) {
         let html = `<table><thead><tr><th>ID</th><th>拠点</th><th>防衛ギルド</th><th>PT</th><th>攻撃ギルド</th><th>状態</th><th>防衛開始</th><th>攻撃開始</th><th>陥落</th><th>反撃</th></tr></thead><tbody>`;
         let combined = [];
 
         for (let i = 1; i <= 21; i++) {
-            // ID（時間順）でソートして全件取得
-            const castleLogs = logData
-                .filter(d => String(d.CastleID) === String(i))
-                .sort((a, b) => (a.ID || 0) - (b.ID || 0));
+            const castleLogs = logData.filter(d => String(d.CastleID) === String(i));
             
             let merged = {
-                dName: "-", aName: "-",
-                dTime: "-", aTime: "-", fTime: "-", cTime: "-"
+                dName: "-", aName: "-", dTime: "-", aTime: "-", fTime: "-", cTime: "-"
             };
 
-            // 各行をスキャンしてnull以外の値をマージ
             castleLogs.forEach(entry => {
-                const hasValue = (v) => v !== null && v !== undefined && v !== "-" && v !== "";
-
-                if (hasValue(entry.DefenseTime)) merged.dTime = entry.DefenseTime;
-                if (hasValue(entry.AttackTime))  merged.aTime = entry.AttackTime;
-                if (hasValue(entry.FallenTime))  merged.fTime = entry.FallenTime;
-                if (hasValue(entry.CounterTime)) merged.cTime = entry.CounterTime;
-
-                if (hasValue(entry.DefenseGuildName)) merged.dName = entry.DefenseGuildName;
-                if (hasValue(entry.AttackGuildName) && entry.AttackGuildName !== "未所属") {
-                    merged.aName = entry.AttackGuildName;
-                }
+                const isValid = (v) => v !== null && v !== undefined && v !== "-" && v !== "";
+                if (isValid(entry.DefenseTime)) merged.dTime = entry.DefenseTime;
+                if (isValid(entry.AttackTime))  merged.aTime = entry.AttackTime;
+                if (isValid(entry.FallenTime))  merged.fTime = entry.FallenTime;
+                if (isValid(entry.CounterTime)) merged.cTime = entry.CounterTime;
+                if (isValid(entry.DefenseGuildName)) merged.dName = entry.DefenseGuildName;
+                if (isValid(entry.AttackGuildName) && entry.AttackGuildName !== "未所属") merged.aName = entry.AttackGuildName;
             });
 
-            // WebSocketデータの適用
             const wsInfo = wsCastleData[i] || {};
-            let displayD = merged.dName;
-            let displayA = merged.aName;
-            let dp = 0, ap = 0;
+            let displayD = merged.dName, displayA = merged.aName, dp = 0, ap = 0;
 
             if (isLive && wsInfo.gid) {
-                const liveD = wsGuildData[wsInfo.gid];
-                const liveA = wsGuildData[wsInfo.agid];
+                const liveD = wsGuildData[wsInfo.gid], liveA = wsGuildData[wsInfo.agid];
                 if (liveD) displayD = liveD;
                 if (liveA) displayA = liveA;
                 dp = wsInfo.dp || 0; ap = wsInfo.ap || 0;
-                if (wsInfo.state === 2 || wsInfo.state === 3) {
-                    [displayD, displayA] = [displayA, displayD];
-                }
+                if (wsInfo.state === 2 || wsInfo.state === 3) [displayD, displayA] = [displayA, displayD];
             }
 
-            // 時刻の整形 (年/月/日を削除)
             const cleanT = (t) => (t && t.includes(' ')) ? t.split(' ')[1] : t;
-
-            // 状態バッジ
             let status = "確定", sClass = "s-defense";
-            if (merged.cTime !== "-") { status = "反撃"; sClass = "s-battle"; }
-            else if (merged.fTime !== "-") { status = "陥落"; sClass = "s-fallen"; }
+            if (merged.fTime !== "-") { status = "陥落"; sClass = "s-fallen"; }
             else if (displayA !== "-" && displayA !== "未所属") { status = "宣戦"; sClass = "s-battle"; }
 
             html += `<tr>
@@ -236,7 +218,6 @@
         document.getElementById('tableContainer').innerHTML = html + `</tbody></table>`;
         updateSummary(combined);
     }
-    // --- 修正ロジックここまで ---
 
     function updateSummary(data) {
         const sum = {};
