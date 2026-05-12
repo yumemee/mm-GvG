@@ -89,6 +89,7 @@
     const CASTLE_API = 'https://tamamo.dev/assets/Resource/CastleId.json';
     
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    // 初期選択：現在が月曜なら土曜、それ以外なら今日
     let currentDay = dayNames[new Date().getDay()] === 'Mon' ? 'Sat' : dayNames[new Date().getDay()];
 
     let ws = null;
@@ -115,12 +116,18 @@
         const statusEl = document.getElementById('updateStatus');
         if (!group) return;
 
-        // クリア処理
+        // WebSocketとデータをクリア
+        if (ws) { ws.close(); ws = null; }
         wsCastleData = [];
         wsGuildData = {};
 
-        const realToday = dayNames[new Date().getDay()];
-        const isTodaySelected = (currentDay === realToday);
+        // 厳格な「今日」判定用の文字列 (YYYY-MM-DD)
+        const now = new Date();
+        const todayStr = now.toISOString().split('T')[0];
+        const realTodayDayName = dayNames[now.getDay()];
+
+        // 「今選択しているタブ」が「実際の今日」かどうか
+        const isTodaySelected = (currentDay === realTodayDayName);
 
         statusEl.textContent = "FETCHING...";
         const params = new URLSearchParams({ 
@@ -137,58 +144,66 @@
             }
         } catch (e) { console.error("Log fetch error"); }
 
-        if (ws) ws.close();
-        ws = new WebSocket("wss://api.mentemori.icu/gvg");
-        ws.binaryType = "arraybuffer";
-        ws.onopen = () => {
-            let buffer = new ArrayBuffer(4);
-            let view = new DataView(buffer);
-            let val = (0 << 19) | (Number(classId) << 16) | (Number(group) << 8) | (Number(blockId) << 5) | 0;
-            view.setUint32(0, val, true);
-            ws.send(buffer);
-        };
-        ws.onmessage = (event) => {
-            let v = new DataView(event.data);
-            let offset = 0;
-            while(offset < v.byteLength) {
-                let a = v.getUint32(offset, true);
-                let s = { GroupId: (a >>> 8) & 255, CastleId: a & 31 };
-                offset += 4;
-                if(s.GroupId != group) break;
-                if (s.CastleId === 0) {
-                    let ga = v.getUint32(offset, true), l = v.getUint8(offset + 4, true);
-                    wsGuildData[1000 * ga] = new TextDecoder("utf-8").decode(new Uint8Array(v.buffer, offset + 5, l));
-                    offset += (5 + l);
-                } else if (s.CastleId <= 21) {
-                    wsCastleData[s.CastleId] = { 
-                        GuildId: 1000 * v.getUint32(offset, true), 
-                        AttackerGuildId: 1000 * v.getUint32(offset + 4, true),
-                        DefensePartyCount: v.getUint16(offset + 12, true),
-                        AttackPartyCount: v.getUint16(offset + 14, true),
-                        GvgCastleState: v.getUint8(offset + 16, true)
-                    };
-                    offset += 20;
-                } else break;
-            }
-            combineAndRender(logDataArray, isTodaySelected);
-        };
+        // もし「今日」のタブならWebSocketを開始
+        if (isTodaySelected) {
+            ws = new WebSocket("wss://api.mentemori.icu/gvg");
+            ws.binaryType = "arraybuffer";
+            ws.onopen = () => {
+                let buffer = new ArrayBuffer(4);
+                let view = new DataView(buffer);
+                let val = (0 << 19) | (Number(classId) << 16) | (Number(group) << 8) | (Number(blockId) << 5) | 0;
+                view.setUint32(0, val, true);
+                ws.send(buffer);
+            };
+            ws.onmessage = (event) => {
+                let v = new DataView(event.data);
+                let offset = 0;
+                while(offset < v.byteLength) {
+                    let a = v.getUint32(offset, true);
+                    let s = { GroupId: (a >>> 8) & 255, CastleId: a & 31 };
+                    offset += 4;
+                    if(s.GroupId != group) break;
+                    if (s.CastleId === 0) {
+                        let ga = v.getUint32(offset, true), l = v.getUint8(offset + 4, true);
+                        wsGuildData[1000 * ga] = new TextDecoder("utf-8").decode(new Uint8Array(v.buffer, offset + 5, l));
+                        offset += (5 + l);
+                    } else if (s.CastleId <= 21) {
+                        wsCastleData[s.CastleId] = { 
+                            GuildId: 1000 * v.getUint32(offset, true), 
+                            AttackerGuildId: 1000 * v.getUint32(offset + 4, true),
+                            DefensePartyCount: v.getUint16(offset + 12, true),
+                            AttackPartyCount: v.getUint16(offset + 14, true),
+                            GvgCastleState: v.getUint8(offset + 16, true)
+                        };
+                        offset += 20;
+                    } else break;
+                }
+                combineAndRender(logDataArray, isTodaySelected, todayStr);
+            };
+        } else {
+            // 過去日タブの場合はWebSocketなしで即描画
+            combineAndRender(logDataArray, false, todayStr);
+        }
         statusEl.textContent = "OK"; 
     }
 
-    function combineAndRender(logDataArray, isTodaySelected) {
+    function combineAndRender(logDataArray, isTodaySelected, todayStr) {
         let combinedData = [];
         const selectedDay = currentDay; 
-        const todayStr = new Date().toISOString().split('T')[0];
 
         for (let i = 1; i <= 21; i++) {
+            // ログのフィルタリング
             let logInfo = logDataArray.find(d => {
                 const isIdMatch = String(d.CastleID) === String(i);
                 const isWeekMatch = d.Week === selectedDay;
-                const logDate = d.Created ? d.Created.split(' ')[0] : (d.Date || "");
+                // Created日付を取得
+                const logDate = d.Created ? d.Created.split(' ')[0] : "";
 
                 if (isTodaySelected) {
+                    // 今日タブの場合：拠点が一致し、かつ日付が今日のものだけ
                     return isIdMatch && isWeekMatch && logDate === todayStr;
                 } else {
+                    // 過去タブの場合：拠点と曜日が一致していればOK
                     return isIdMatch && isWeekMatch;
                 }
             }) || {};
@@ -196,6 +211,7 @@
             let wsInfo = wsCastleData[i] || {};
             let dName = "-", aName = "-", dP = 0, aP = 0;
             
+            // WebSocketデータ（リアルタイム）を結合するのは「今日タブ」の時だけ
             if (isTodaySelected) {
                 dName = wsGuildData[wsInfo.GuildId] || "-";
                 aName = wsGuildData[wsInfo.AttackerGuildId] || "-";
