@@ -161,7 +161,7 @@
 
     async function fetchCastleNames() {
         try {
-            const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(CASTLE_API + '?_t=' + Date.now())}`);
+            const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(CASTLE_API + '?_t=' + Date.now())}`);
             if(res.ok) {
                 const data = await res.json();
                 if (data.globalGvG) {
@@ -183,7 +183,7 @@
         let logDataArray = [];
         
         try {
-            const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(BASE_LOG_API + '?' + params.toString())}`).catch(()=>null);
+            const res = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(BASE_LOG_API + '?' + params.toString())}`).catch(()=>null);
             if (res && res.ok) {
                 const json = await res.json();
                 logDataArray = json.data?.Log || [];
