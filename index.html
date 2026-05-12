@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>▶ GRAND WAR MONITOR / FIXED</title>
+    <title>▶ GRAND WAR MONITOR / FINAL FIXED</title>
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -50,7 +50,6 @@
         .s-defense { background: rgba(34, 197, 94, 0.15); color: var(--defense); border: 1px solid var(--defense); }
         .s-battle { background: rgba(234, 179, 8, 0.15); color: var(--battle); border: 1px solid var(--battle); }
         .s-fallen { background: rgba(249, 115, 22, 0.15); color: var(--fallen); border: 1px solid var(--fallen); }
-        .s-counter { background: rgba(168, 85, 247, 0.15); color: var(--counter); border: 1px solid var(--counter); }
     </style>
 </head>
 <body>
@@ -65,7 +64,7 @@
         <div class="ctrl-group"><label>ID MANUAL</label><input type="number" id="groupManual" placeholder="ID"></div>
         <div class="btn-group">
             <button id="autoBtn">FETCH DATA</button>
-            <button id="resetLogBtn" class="reset-btn" onclick="location.reload()">RELOAD</button>
+            <button class="reset-btn" onclick="location.reload()">RELOAD</button>
         </div>
     </div>
 </header>
@@ -170,7 +169,7 @@
         let combined = [];
 
         for (let i = 1; i <= 21; i++) {
-            // 【修正点①】その拠点の全ログから、一番重要なデータ（陥落 > 攻撃 > 防衛）を優先して抽出
+            // 【ログ集約】複数のログから最も優先度の高い行を抽出
             const castleLogs = logData.filter(d => String(d.CastleID) === String(i) && d.Week === currentDay);
             const log = castleLogs.sort((a, b) => {
                 const getScore = (x) => {
@@ -194,14 +193,15 @@
                 if (wsInfo.state === 2 || wsInfo.state === 3) [dName, aName] = [aName, dName];
             }
 
-            // 【修正点②】状態判定ロジックの強化
+            // 【状態判定】陥落・宣戦・反撃の優先順位
             let status = "確定", sClass = "s-defense";
             const hasFallen = (log.FallenTime && log.FallenTime !== "-");
             const hasAttack = (aName !== "-" && aName !== "未所属") || (log.AttackTime && log.AttackTime !== "-");
             const hasCounter = (log.CounterTime && log.CounterTime !== "-");
 
+            // 反撃が始まったら「宣戦」と同じ扱い（黄色バッジ）にする要件
             if (hasCounter) {
-                status = "反撃中"; sClass = "s-battle"; 
+                status = "宣戦"; sClass = "s-battle"; 
             } else if (hasFallen) { 
                 status = "陥落"; sClass = "s-fallen"; 
             } else if (hasAttack) { 
