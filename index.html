@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>▶ GRAND WAR MONITOR / FULL DATA VERSION</title>
+    <title>▶ GRAND WAR MONITOR / STABLE FULL VERSION</title>
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -59,7 +59,6 @@
         thead th { background: var(--surface2); padding: 12px 10px; text-align: left; color: var(--muted); position: sticky; top: 0; border-bottom: 1px solid var(--border); z-index: 2; }
         tbody td { padding: 10px; border-bottom: 1px solid var(--border2); white-space: nowrap; }
 
-        /* セル内カラー */
         .c-defense { color: var(--defense) !important; }
         .c-attack { color: var(--attack) !important; }
         .c-fallen { color: var(--fallen) !important; }
@@ -114,7 +113,6 @@
     const BASE_LOG_API = 'https://api.tamamo.dev/GvGLog';
     const CASTLE_API = 'https://tamamo.dev/assets/Resource/CastleId.json';
     
-    // すべてのグループデータを復旧
     const GROUP_DATA = { 
         18: "W85, W89, W93, W97", 19: "W101, W105, W109, W113", 20: "W104, W108, W112, W116", 21: "W117, W121, W125, W129",
         140: "W149-152", 141: "W1, W7, W12, W19", 142: "W2, W8, W20, W27", 143: "W3, W4, W13, W31", 144: "W5, W9, W21, W30", 
@@ -148,8 +146,11 @@
 
         statusEl.textContent = "FETCHING...";
         const params = new URLSearchParams({
-            Group: group, Class: document.getElementById('classSelect').value,
-            Block: document.getElementById('blockSelect').value, Week: currentDay, _t: Date.now()
+            Group: group, 
+            Class: document.getElementById('classSelect').value,
+            Block: document.getElementById('blockSelect').value, 
+            Week: currentDay, 
+            _t: Date.now()
         });
 
         try {
@@ -158,7 +159,7 @@
             const logData = json.data?.Log || [];
             renderTable(logData);
             updateGuildSummary(logData);
-            statusEl.textContent = "OK: " + new Date().toLocaleTimeString();
+            statusEl.textContent = "OK (" + currentDay + "): " + new Date().toLocaleTimeString();
         } catch (e) { statusEl.textContent = "ERROR"; }
     }
 
@@ -174,8 +175,11 @@
             const aGuild = row.AttackGuildName || row.attackGuildName || "-";
             
             let label = '確定', sClass = 's-defense';
-            if (row.FallenTime) { label = '陥落'; sClass = 's-fallen'; }
-            else if (row.AttackTime) { label = '宣戦'; sClass = 's-battle'; }
+            if (row.FallenTime) { 
+                label = '陥落'; sClass = 's-fallen'; 
+            } else if (row.AttackTime || (aGuild !== "-")) { 
+                label = '宣戦'; sClass = 's-battle'; 
+            }
 
             html += `<tr>
                 <td style="color:var(--accent); font-weight:bold;">${id}</td>
@@ -203,23 +207,38 @@
             sorted.map(([n, c]) => `<div class="guild-chip">${n}<b>${c}P</b></div>`).join('');
     }
 
-    // 初期化処理
-    const groupSelect = document.getElementById('groupSelect');
-    const display = document.getElementById('selectedWorldDisplay');
-    
-    Object.keys(GROUP_DATA).sort((a,b) => a-b).forEach(id => {
-        const opt = document.createElement('option'); opt.value = id; opt.textContent = `${id} [${GROUP_DATA[id]}]`;
-        groupSelect.appendChild(opt);
-    });
+    function setupDayTabs() {
+        document.querySelectorAll('.day-tab').forEach(tab => {
+            if (tab.dataset.day === currentDay) tab.classList.add('active');
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.day-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                currentDay = tab.dataset.day;
+                updateData();
+            });
+        });
+    }
 
-    groupSelect.addEventListener('change', () => {
-        display.textContent = groupSelect.value ? `World: ${GROUP_DATA[groupSelect.value]}` : "Select...";
-    });
+    function setupGroupSelect() {
+        const groupSelect = document.getElementById('groupSelect');
+        const display = document.getElementById('selectedWorldDisplay');
+        Object.keys(GROUP_DATA).sort((a,b) => a-b).forEach(id => {
+            const opt = document.createElement('option'); opt.value = id; opt.textContent = `${id} [${GROUP_DATA[id]}]`;
+            groupSelect.appendChild(opt);
+        });
+        groupSelect.addEventListener('change', () => {
+            display.textContent = groupSelect.value ? `World: ${GROUP_DATA[groupSelect.value]}` : "Select...";
+        });
+    }
 
     document.getElementById('autoBtn').addEventListener('click', updateData);
     setInterval(() => { document.getElementById('clock').textContent = new Date().toLocaleTimeString(); }, 1000);
     
-    async function init() { await fetchCastleNames(); }
+    async function init() { 
+        setupDayTabs();
+        setupGroupSelect();
+        await fetchCastleNames(); 
+    }
     init();
 </script>
 </body>
