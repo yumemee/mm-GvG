@@ -21,27 +21,18 @@
 
         h1 { font-family: var(--mono); font-size: 14px; letter-spacing: 2px; color: var(--accent); margin-bottom: 12px; text-align: center; }
 
-        /* グリッド配置を厳格に指定 */
-        .controls { 
-            display: grid; 
-            grid-template-columns: repeat(3, 1fr); 
-            gap: 8px; 
-        }
-        
+        .controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
         .ctrl-group { display: flex; flex-direction: column; gap: 4px; }
         label { font-size: 9px; color: var(--muted); font-weight: bold; white-space: nowrap; }
         select, input { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 8px 4px; font-size: 11px; border-radius: 4px; outline: none; width: 100%; height: 35px; }
 
-        /* World情報を独立した行にする */
-        .world-row {
-            grid-column: 1 / -1; 
-            margin-top: 4px;
-        }
+        /* World詳細表示エリア */
+        .world-row { grid-column: 1 / -1; margin-top: 4px; }
         .world-info { 
             font-size: 10px; color: var(--accent); background: rgba(59, 130, 246, 0.1); 
-            padding: 6px; border-radius: 4px; text-align: center; display: block; 
+            padding: 8px; border-radius: 4px; text-align: center; display: block; 
             min-height: 1.2em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-            border: 1px dashed rgba(59, 130, 246, 0.3);
+            border: 1px dashed rgba(59, 130, 246, 0.3); font-weight: bold;
         }
 
         .manual-row { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 2fr; gap: 8px; margin-top: 4px; }
@@ -90,7 +81,7 @@
 
         @media (min-width: 768px) {
             h1 { text-align: left; }
-            .controls { grid-template-columns: 1fr 1fr 1fr 1.5fr 1fr 2fr; gap: 10px; }
+            .controls { grid-template-columns: 1.5fr 1fr 1fr 2fr 1fr 2fr; gap: 10px; align-items: flex-end; }
             .world-row { grid-column: auto; margin-top: 0; }
             .manual-row { grid-column: auto; display: contents; }
             .status-bar { flex-direction: row; align-items: center; justify-content: space-between; }
@@ -128,7 +119,7 @@
         
         <div class="world-row">
             <label>WORLD INFO</label>
-            <div id="selectedWorldDisplay" class="world-info">World: -</div>
+            <div id="selectedWorldDisplay" class="world-info">Select a group...</div>
         </div>
         
         <div class="manual-row">
@@ -200,14 +191,22 @@
     function setupGroupList() {
         const select = document.getElementById('groupSelect');
         const display = document.getElementById('selectedWorldDisplay');
+        
         select.innerHTML = '<option value="">-- SELECT --</option>';
         Object.keys(GROUP_DATA).sort((a,b) => Number(a)-Number(b)).forEach(id => {
             const opt = document.createElement('option');
-            opt.value = id; opt.textContent = `${id}`;
+            opt.value = id; 
+            // 修正：リスト内でも詳細が見えるようにした
+            opt.textContent = `${id} [ ${GROUP_DATA[id]} ]`;
             select.appendChild(opt);
         });
+
         select.addEventListener('change', () => {
-            display.textContent = select.value ? `World: ${GROUP_DATA[select.value]}` : "World: -";
+            if (select.value && GROUP_DATA[select.value]) {
+                display.textContent = `World: ${GROUP_DATA[select.value]}`;
+            } else {
+                display.textContent = "Select a group...";
+            }
         });
     }
 
@@ -238,7 +237,8 @@
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             if (!data || data.length === 0) {
-                statusEl.textContent = "データ空";
+                statusEl.textContent = "データなし";
+                statusEl.style.color = "#f97316";
                 return;
             }
             processHistory(data);
