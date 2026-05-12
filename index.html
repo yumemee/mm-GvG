@@ -10,16 +10,17 @@
             --bg: #080b0f; --surface: #0f1318; --surface2: #161c24;
             --border: #252d3a; --border2: #1e2736; --text: #c8d8e8; --muted: #4a5568;
             --accent: #3b82f6; 
-            --attack: #ff4d4d; 
-            --defense: #22c55e; 
-            --fallen: #f97316; 
-            --battle: #eab308; 
-            --counter: #a855f7; 
+            --attack: #ff4d4d; /* 攻撃開始：赤 */
+            --defense: #22c55e; /* 防衛：緑 */
+            --fallen: #f97316; /* 陥落：オレンジ */
+            --battle: #eab308; /* 宣戦：黄色 */
+            --counter: #a855f7; /* 反撃：紫 */
             --mono: 'Share Tech Mono', monospace; --sans: 'Noto Sans JP', sans-serif;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 13px; min-height: 100vh; overflow-x: hidden; }
+        body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 13px; min-height: 100vh; }
         
+        /* 画面上部の固定メニュー */
         header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 16px; position: relative; z-index: 101; }
         .sticky-nav { position: sticky; top: 0; z-index: 100; background: var(--bg); }
 
@@ -31,18 +32,19 @@
         select, input { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 8px 4px; font-size: 11px; border-radius: 4px; outline: none; width: 100%; height: 35px; }
 
         .world-row { grid-column: 1 / -1; margin-top: 4px; }
-        .world-info { font-size: 10px; color: var(--accent); background: rgba(59, 130, 246, 0.1); padding: 8px; border-radius: 4px; text-align: center; display: block; min-height: 1.2em; border: 1px dashed rgba(59, 130, 246, 0.3); font-weight: bold; }
+        .world-info { 
+            font-size: 10px; color: var(--accent); background: rgba(59, 130, 246, 0.1); 
+            padding: 8px; border-radius: 4px; text-align: center; display: block; 
+            min-height: 1.2em; border: 1px dashed rgba(59, 130, 246, 0.3); font-weight: bold;
+        }
 
         .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; grid-column: 1 / -1; margin-top: 8px; }
         button { border: none; color: #fff; padding: 8px; font-size: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; height: 35px; transition: all 0.2s; }
         #autoBtn { background: var(--accent); }
+        #autoBtn:hover { opacity: 0.8; }
         .reset-btn { background: transparent; border: 1px solid var(--attack); color: var(--attack); }
 
         .status-bar { background: var(--surface); border-bottom: 1px solid var(--border2); padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; }
-        .view-tabs { display: flex; gap: 10px; }
-        .view-tab { padding: 4px 15px; border-radius: 20px; font-size: 11px; font-weight: bold; cursor: pointer; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); }
-        .view-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-
         .day-tabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
         .day-tab { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); padding: 4px 10px; border-radius: 3px; cursor: pointer; font-family: var(--mono); font-size: 10px; white-space: nowrap; }
         .day-tab.active { border-color: var(--accent); color: var(--accent); background: #1a2030; }
@@ -52,48 +54,29 @@
         .guild-chip { background: rgba(255,255,255,0.05); border: 1px solid var(--border); padding: 3px 10px; border-radius: 3px; font-size: 11px; font-family: var(--mono); }
         .guild-chip b { color: var(--defense); margin-left: 6px; }
 
-        .main { padding: 10px; position: relative; }
+        .main { padding: 10px; }
         #tableContainer { width: 100%; overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; }
         
+        /* テーブルの幅固定 */
         table { width: 100%; border-collapse: separate; border-spacing: 0; font-family: var(--mono); font-size: 12px; min-width: 1120px; table-layout: fixed; }
-        thead th { background: var(--surface2); padding: 12px 6px; text-align: left; color: var(--muted); position: sticky; top: 0; border-bottom: 1px solid var(--border); z-index: 2; white-space: nowrap; }
+        thead th { background: var(--surface2); padding: 12px 6px; text-align: left; color: var(--muted); position: sticky; top: 0; border-bottom: 1px solid var(--border); z-index: 2; overflow: hidden; white-space: nowrap; }
         tbody td { padding: 10px 6px; border-bottom: 1px solid var(--border2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         .c-defense { color: var(--defense) !important; }
         .c-attack { color: var(--attack) !important; }
+        .c-fallen { color: var(--fallen) !important; }
+        .c-counter { color: var(--counter) !important; }
+        .c-battle { color: var(--battle) !important; }
+
         .time-cell { font-size: 11px; background: rgba(255,255,255,0.03); border-radius: 2px; padding: 2px 4px; text-align: center; font-weight: bold; }
+        
         .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; text-align: center; min-width: 50px; }
         .s-defense { background: rgba(34, 197, 94, 0.15); color: var(--defense); border: 1px solid var(--defense); }
         .s-battle { background: rgba(234, 179, 8, 0.15); color: var(--battle); border: 1px solid var(--battle); }
         .s-fallen { background: rgba(249, 115, 22, 0.15); color: var(--fallen); border: 1px solid var(--fallen); }
 
-        /* --- 🗺 MAP SYSTEM STYLES --- */
-        #mapContainer { width: 100%; height: 800px; overflow: auto; background: #000; border: 1px solid var(--border); border-radius: 4px; display: none; position: relative; }
-        gvg-viewer { display: block; position: relative; width: 1280px; height: 1280px; background-image: url('https://mentemori.icu/assets/globalgvg.png'); background-size: contain; transform-origin: top left; transform: scale(0.65); }
-        
-        gvg-castle { display: block; position: absolute; width: 100px; height: 100px; }
-        gvg-castle-icon { display: block; width: 62px; height: 67px; background-size: cover; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
-        gvg-castle[temple] gvg-castle-icon { background-image: url('https://mentemori.icu/assets/Castle_1_2.png'); width: 78px; height: 80px; }
-        gvg-castle[castle] gvg-castle-icon { background-image: url('https://mentemori.icu/assets/Castle_1_1.png'); width: 62px; height: 67px; }
-        gvg-castle[church] gvg-castle-icon { background-image: url('https://mentemori.icu/assets/Castle_1_0.png'); width: 56px; height: 50px; }
-
-        gvg-castle-name { position: absolute; bottom: -45px; left: 50%; transform: translateX(-50%); background-image: url('https://mentemori.icu/assets/base_metal.png'); background-size: 100% 100%; width: 120px; height: 30px; color: white; font-size: 10px; text-align: center; line-height: 32px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 5px; }
-
-        gvg-status { position: absolute; top: -75px; left: 50%; transform: translateX(-50%); display: block; width: 160px; height: 50px; }
-        gvg-status-icon-defense, gvg-status-icon-offense { display: block; width: 32px; height: 33px; position: absolute; background-size: cover; text-align: center; line-height: 37px; color: white; font-size: 11px; font-weight: bold; }
-        gvg-status-icon-defense { background-image: url('https://mentemori.icu/assets/icon_gvg_party_defense.png'); right: 0; bottom: 0; }
-        gvg-status-icon-offense { background-image: url('https://mentemori.icu/assets/icon_gvg_party_offense.png'); left: 0; bottom: 0; }
-
-        gvg-status-bar-defense, gvg-status-bar-offense { display: none; width: 90px; height: 20px; position: absolute; background-size: 100% 100%; color: white; font-size: 9px; padding: 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        gvg-status-bar-defense { background-image: url('https://mentemori.icu/assets/base_s_09_blue.png'); right: 28px; bottom: 0; text-align: right; line-height: 24px; }
-        gvg-status-bar-offense { background-image: url('https://mentemori.icu/assets/base_s_09_red.png'); left: 28px; bottom: 10px; text-align: left; line-height: 16px; }
-
-        gvg-status[neutral] gvg-status-icon-offense, gvg-status[neutral] gvg-status-bar-offense { display: none; }
-        gvg-status[neutral] gvg-status-icon-defense { right: 50%; transform: translateX(50%); top: 10px; }
-        gvg-status[neutral] gvg-status-bar-defense { display: block; width: 130px; height: 14px; background-image: url('https://mentemori.icu/assets/base_s_08_blue.png'); text-align: center; line-height: 14px; right: 50%; transform: translateX(50%); bottom: -10px; font-size: 10px; }
-        gvg-status[active] gvg-status-bar-defense, gvg-status[active] gvg-status-bar-offense { display: block; }
-
         @media (min-width: 768px) {
+            /* MODEを削除した分、6列のグリッドに変更してレイアウトを最適化 */
             .controls { grid-template-columns: 1fr 1fr 1fr 2fr 1fr 1fr; align-items: flex-end; }
             .world-row, .btn-group { grid-column: auto; margin-top: 0; }
         }
@@ -118,87 +101,71 @@
 
 <div class="sticky-nav">
     <div class="status-bar">
-        <div class="view-tabs">
-            <div class="view-tab active" onclick="switchView('list')">LIST VIEW</div>
-            <div class="view-tab" onclick="switchView('map')">MAP VIEW</div>
-        </div>
         <div class="day-tabs" id="dayTabs">
             <span class="day-tab" data-day="Sat">SAT</span><span class="day-tab" data-day="Sun">SUN</span><span class="day-tab" data-day="Tue">TUE</span><span class="day-tab" data-day="Wed">WED</span><span class="day-tab" data-day="Thu">THU</span><span class="day-tab" data-day="Fri">FRI</span>
         </div>
         <div class="status-info"><span id="updateStatus" style="color:var(--accent)">READY</span> | <span id="clock">00:00:00</span></div>
     </div>
-    <div class="guild-summary" id="guildSummary"><div class="summary-label">防衛パーティー数</div></div>
+    <div class="guild-summary" id="guildSummary"><div class="summary-label">防衛パーティ数</div></div>
 </div>
 
-<div class="main">
-    <div id="tableContainer"></div>
-    <div id="mapContainer"><gvg-viewer id="gvgMapViewer"></gvg-viewer></div>
-</div>
+<div class="main"><div id="tableContainer"></div></div>
 
 <script>
     const BASE_LOG_API = 'https://api.tamamo.dev/GvGLog';
     const CASTLE_API = 'https://tamamo.dev/assets/Resource/CastleId.json';
-    const GLOBAL_CASTLE_MAP = {"1":"アイン","2":"イエソド","3":"マルクト","4":"ケテル","5":"テファレト","6":"クシェル","7":"シトリ","8":"トパズ","9":"メラル","10":"ペリド","11":"ファリア","12":"ラピス","13":"ラリマル","14":"マリン","15":"アメト","16":"ラベン","17":"シルコン","18":"オニキス","19":"フロライト","20":"ガネット","21":"ルラ"};
+    
+    const GLOBAL_CASTLE_MAP = {
+        "1": "アイン", "2": "イエソド", "3": "マルクト", "4": "ケテル", "5": "テファレト",
+        "6": "クシェル", "7": "シトリ", "8": "トパズ", "9": "メラル", "10": "ペリド",
+        "11": "ファリア", "12": "ラピス", "13": "ラリマル", "14": "マリン", "15": "アメト",
+        "16": "ラベン", "17": "シルコン", "18": "オニキス", "19": "フロライト", "20": "ガネット",
+        "21": "ルラ"
+    };
 
-    const GROUP_DATA = { 18:"W85,W89,W93,W97",19:"W101,W105,W109,W113",20:"W104,W108,W112,W116",21:"W117,W121,W125,W129",140:"W149-152",141:"W1,W7,W12,W19",142:"W2,W8,W20,W27",143:"W3,W4,W13,W31",144:"W5,W9,W21,W30",145:"W6,W14,W15,W32",146:"W10,W18,W24,W29",147:"W11,W17,W22,W26",148:"W16,W23,W25,W28",149:"W33,W54,W60,W63",150:"W34,W43,W51,W61",151:"W35,W44,W48,W53",152:"W36,W38,W47,W64",153:"W37,W46,W57,W58",154:"W39,W52,W56,W62",155:"W40,W41,W42,W55",156:"W45,W49,W50,W59",157:"W65,W67,W78,W96",158:"W66,W69,W76,W85",159:"W68,W70,W84,W93",160:"W71,W75,W82,W89",161:"W72,W79,W86,W91",162:"W73,W83,W90,W95",163:"W74,W80,W87,W94",164:"W77,W81,W88,W92",165:"W97,W104,W110,W115",166:"W98,W103,W108,W113",167:"W99,W102,W109,W116",168:"W100,W105,W107,W114",169:"W101,W106,W111,W112",170:"W117,W127,W129,W132",171:"W118,W124,W126,W131",172:"W119,W121,W122,W125",173:"W120,W123,W128,W130",174:"W133,W139,W143,W148",175:"W134,W137,W142,W145",176:"W135,W138,W144,W147",177:"W136,W140,W141,W146",178:"W153,W154,W155,W156",179:"W157,W158,W159,W160",180:"W161-W164" };
-
-    const MAP_POSITIONS = {
-        1: {x: 640, y: 560, t: "temple"}, 2: {x: 803, y: 503, t: "castle"}, 3: {x: 747, y: 718, t: "castle"}, 4: {x: 418, y: 725, t: "castle"}, 5: {x: 484, y: 439, t: "castle"},
-        6: {x: 691, y: 265, t: "church"}, 7: {x: 986, y: 301, t: "church"}, 8: {x: 1144, y: 402, t: "church"}, 9: {x: 1107, y: 567, t: "church"}, 10: {x: 958, y: 627, t: "church"},
-        11: {x: 891, y: 177, t: "church"}, 12: {x: 906, y: 884, t: "church"}, 13: {x: 743, y: 1131, t: "church"}, 14: {x: 520, y: 1007, t: "church"}, 15: {x: 560, y: 851, t: "church"},
-        16: {x: 309, y: 985, t: "church"}, 17: {x: 250, y: 728, t: "church"}, 18: {x: 112, y: 602, t: "church"}, 19: {x: 260, y: 420, t: "church"}, 20: {x: 198, y: 259, t: "church"},
-        21: {x: 495, y: 158, t: "church"}
+    const GROUP_DATA = { 
+        18: "W85, W89, W93, W97", 19: "W101, W105, W109, W113", 20: "W104, W108, W112, W116", 21: "W117, W121, W125, W129",
+        140: "W149-152", 141: "W1, W7, W12, W19", 142: "W2, W8, W20, W27", 143: "W3, W4, W13, W31", 144: "W5, W9, W21, W30", 
+        145: "W6, W14, W15, W32", 146: "W10, W18, W24, W29", 147: "W11, W17, W22, W26", 148: "W16, W23, W25, W28", 
+        149: "W33, W54, W60, W63", 150: "W34, W43, W51, W61", 151: "W35, W44, W48, W53", 152: "W36, W38, W47, W64", 
+        153: "W37, W46, W57, W58", 154: "W39, W52, W56, W62", 155: "W40, W41, W42, W55", 156: "W45, W49, W50, W59", 
+        157: "W65, W67, W78, W96", 158: "W66, W69, W76, W85", 159: "W68, W70, W84, W93", 160: "W71, W75, W82, W89", 
+        161: "W72, W79, W86, W91", 162: "W73, W83, W90, W95", 163: "W74, W80, W87, W94", 164: "W77, W81, W88, W92", 
+        165: "W97, W104, W110, W115", 166: "W98, W103, W108, W113", 167: "W99, W102, W109, W116", 168: "W100, W105, W107, W114", 
+        169: "W101, W106, W111, W112", 170: "W117, W127, W129, W132", 171: "W118, W124, W126, W131", 172: "W119, W121, W122, W125", 
+        173: "W120, W123, W128, W130", 174: "W133, W139, W143, W148", 175: "W134, W137, W142, W145", 176: "W135, W138, W144, W147", 
+        177: "W136, W140, W141, W146", 178: "W153, W154, W155, W156", 179: "W157, W158, W159, W160", 180: "W161-W164"
     };
 
     let castleNames = { ...GLOBAL_CASTLE_MAP };
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     let currentDay = dayNames[new Date().getDay()] === 'Mon' ? 'Sat' : dayNames[new Date().getDay()];
-    let ws = null, wsGuildData = {}, wsCastleData = [];
 
-    function switchView(type) {
-        document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
-        event.target.classList.add('active');
-        document.getElementById('tableContainer').style.display = (type === 'list') ? 'block' : 'none';
-        document.getElementById('mapContainer').style.display = (type === 'map') ? 'block' : 'none';
-    }
+    // WebSocket用の変数
+    let ws = null;
+    let wsGuildData = {};
+    let wsCastleData = [];
 
-    function initMap() {
-        const viewer = document.getElementById('gvgMapViewer');
-        viewer.innerHTML = '';
-        for (let i = 1; i <= 21; i++) {
-            const pos = MAP_POSITIONS[i];
-            const castle = document.createElement('gvg-castle');
-            castle.setAttribute('castle-id', i);
-            castle.setAttribute(pos.t, "");
-            castle.style.left = `${pos.x}px`;
-            castle.style.top = `${pos.y}px`;
-            castle.innerHTML = `
-                <gvg-status neutral>
-                    <gvg-status-bar-offense>-</gvg-status-bar-offense>
-                    <gvg-status-bar-defense>-</gvg-status-bar-defense>
-                    <gvg-status-icon-offense>0</gvg-status-icon-offense>
-                    <gvg-status-icon-defense>0</gvg-status-icon-defense>
-                </gvg-status>
-                <gvg-castle-icon></gvg-castle-icon>
-                <gvg-castle-name>${GLOBAL_CASTLE_MAP[i]}</gvg-castle-name>
-            `;
-            viewer.appendChild(castle);
-        }
-    }
+    // 暗号解読用関数
+    const parseHeader = (v, offset) => {
+        let a = v.getUint32(offset, true);
+        return { value: { WorldId: a >>> 19, GroupId: (a >>> 8) & 255, Class: (a >>> 16) & 7, Block: (a >>> 5) & 7, CastleId: a & 31 }, offset: offset + 4 };
+    };
+    const parseGuild = (v, offset, worldId) => {
+        let a = v.getUint32(offset, true), l = v.getUint8(offset + 4, true);
+        return { value: { GuildId: 1000 * a + 0, GuildName: new TextDecoder("utf-8").decode(new Uint8Array(v.buffer, offset + 5, l)) }, offset: offset + 5 + l };
+    };
+    const parseCastle = (v, offset) => {
+        return { value: { 
+            GuildId: 1000 * v.getUint32(offset, true) + 0, 
+            AttackerGuildId: 1000 * v.getUint32(offset + 4, true) + 0,
+            DefensePartyCount: v.getUint16(offset + 12, true),
+            AttackPartyCount: v.getUint16(offset + 14, true),
+            GvgCastleState: v.getUint8(offset + 16, true)
+        }, offset: offset + 20 };
+    };
 
-    // ★ 日付をカットして時刻だけにする便利関数（nullも弾く）
-    function formatTimeStr(t) {
-        if (!t || t === "null" || t === "undefined" || t === "-") return "-";
-        const parts = String(t).trim().split(" ");
-        // "26/05/12 08:30:29" なら後ろの "08:30:29" だけを返す
-        return parts.length > 1 ? parts[parts.length - 1] : parts[0];
-    }
-
-    // --- WebSocketデータ解析 ---
-    const parseHeader = (v, o) => { let a = v.getUint32(o, true); return { value: { GroupId: (a >>> 8) & 255, Class: (a >>> 16) & 7, Block: (a >>> 5) & 7, CastleId: a & 31, WorldId: a >>> 19 }, offset: o + 4 }; };
-    const parseGuild = (v, o) => { let a = v.getUint32(o, true), l = v.getUint8(o + 4, true); return { value: { GuildId: 1000 * a, GuildName: new TextDecoder("utf-8").decode(new Uint8Array(v.buffer, o + 5, l)) }, offset: o + 5 + l }; };
-    // ★ 陥落時刻（タイムスタンプ）の取得も追加しました
-    const parseCastle = (v, o) => { return { value: { GuildId: 1000 * v.getUint32(o, true), AttackerGuildId: 1000 * v.getUint32(o + 4, true), UtcFallenTimeStamp: 1000 * v.getUint32(o + 8, true), DefensePartyCount: v.getUint16(o + 12, true), AttackPartyCount: v.getUint16(o + 14, true), GvgCastleState: v.getUint8(o + 16, true) }, offset: o + 20 }; };
-
+    // 拠点名の取得
     async function fetchCastleNames() {
         try {
             const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(CASTLE_API + '?_t=' + Date.now())}`);
@@ -211,133 +178,204 @@
         } catch (e) { console.warn("Castle names fetch skipped."); }
     }
 
+    // データを取得して合体させる
     async function updateData() {
         const group = document.getElementById('groupManual').value || document.getElementById('groupSelect').value;
-        const classId = document.getElementById('classSelect').value, blockId = document.getElementById('blockSelect').value;
+        const classId = document.getElementById('classSelect').value;
+        const blockId = document.getElementById('blockSelect').value;
+        const statusEl = document.getElementById('updateStatus');
         if (!group) return;
-        document.getElementById('updateStatus').textContent = "FETCHING...";
+
+        statusEl.textContent = "FETCHING...";
+        
+        const params = new URLSearchParams({
+            Group: group, Class: classId, Block: blockId, Week: currentDay, _t: Date.now()
+        });
 
         let logDataArray = [];
-        const logUrl = BASE_LOG_API + `?Group=${group}&Class=${classId}&Block=${blockId}&Week=${currentDay}&_t=${Date.now()}`;
         
-        // ★ キャッシュされにくいcorsproxyを優先し、ダメなら直接取得にフォールバック
         try {
-            const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(logUrl)}`);
-            if(res.ok) { const json = await res.json(); logDataArray = json.data?.Log || []; }
-            else throw new Error();
+            const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(BASE_LOG_API + '?' + params.toString())}`).catch(()=>null);
+            if (res && res.ok) {
+                const json = await res.json();
+                logDataArray = json.data?.Log || [];
+            }
         } catch (e) {
-            try {
-                const res = await fetch(logUrl);
-                if (res.ok) { const json = await res.json(); logDataArray = json.data?.Log || []; }
-            } catch (err) { console.warn("Log API fetch error"); }
+            console.warn("Log API fallback");
         }
 
-        if (ws) ws.close();
-        wsGuildData = {}; wsCastleData = [];
-        ws = new WebSocket("wss://api.mentemori.icu/gvg");
-        ws.binaryType = "arraybuffer";
-        ws.onopen = () => {
-            let buffer = new ArrayBuffer(4), view = new DataView(buffer);
-            view.setUint32(0, (0 << 19) | (classId << 16) | (group << 8) | (blockId << 5) | 0, true);
-            ws.send(buffer);
-        };
-        ws.onmessage = (event) => {
-            let v = new DataView(event.data), offset = 0;
-            while(offset < v.byteLength) {
-                let header = parseHeader(v, offset), stream = header.value; offset = header.offset;
-                if(stream.GroupId != group || stream.Class != classId || stream.Block != blockId) break;
-                if (stream.CastleId === 0) { let guild = parseGuild(v, offset); offset = guild.offset; wsGuildData[guild.value.GuildId] = guild.value.GuildName; }
-                else if (stream.CastleId <= 21) { let castle = parseCastle(v, offset); offset = castle.offset; wsCastleData[stream.CastleId] = castle.value; }
-                else break;
-            }
-            combineAndRender(logDataArray);
-            document.getElementById('updateStatus').textContent = "OK (" + currentDay + "): " + new Date().toLocaleTimeString();
-        };
-        ws.onerror = () => { document.getElementById('updateStatus').textContent = "WS ERROR"; };
+        try {
+            if (ws) ws.close();
+            wsGuildData = {};
+            wsCastleData = [];
+
+            ws = new WebSocket("wss://api.mentemori.icu/gvg");
+            ws.binaryType = "arraybuffer";
+
+            ws.onopen = () => {
+                let buffer = new ArrayBuffer(4);
+                let view = new DataView(buffer);
+                let requestVal = (0 << 19) | (Number(classId) << 16) | (Number(group) << 8) | (Number(blockId) << 5) | 0;
+                view.setUint32(0, requestVal, true);
+                ws.send(buffer);
+            };
+
+            ws.onmessage = (event) => {
+                let v = new DataView(event.data);
+                let offset = 0;
+                while(offset < v.byteLength) {
+                    let header = parseHeader(v, offset);
+                    let stream = header.value;
+                    offset = header.offset;
+
+                    if(stream.GroupId != group || stream.Class != classId || stream.Block != blockId) break;
+
+                    if (stream.CastleId === 0) {
+                        let guild = parseGuild(v, offset, stream.WorldId);
+                        offset = guild.offset;
+                        wsGuildData[guild.value.GuildId] = guild.value.GuildName;
+                    } else if (stream.CastleId <= 21) {
+                        let castle = parseCastle(v, offset);
+                        offset = castle.offset;
+                        wsCastleData[stream.CastleId] = castle.value;
+                    } else {
+                        break;
+                    }
+                }
+                combineAndRender(logDataArray);
+            };
+            
+            statusEl.textContent = "OK (" + currentDay + "): " + new Date().toLocaleTimeString();
+        } catch (e) { 
+            statusEl.textContent = "WS ERROR"; 
+        }
     }
 
+    // データ合体・テーブル描画
     function combineAndRender(logDataArray) {
         let combinedData = [];
+        
         for (let i = 1; i <= 21; i++) {
             let logInfo = logDataArray.find(d => String(d.CastleID) === String(i)) || {};
             let wsInfo = wsCastleData[i] || {};
-            let dGuild = wsGuildData[wsInfo.GuildId] || "-", aGuild = wsGuildData[wsInfo.AttackerGuildId] || "-";
-            if (wsInfo.GvgCastleState == 2 || wsInfo.GvgCastleState == 3) { let t = dGuild; dGuild = aGuild; aGuild = t; }
 
-            // ★ WebSocketデータから陥落時間を補完するバックアップ機能
-            let fTime = formatTimeStr(logInfo.FallenTime);
-            if (fTime === "-" && wsInfo.UtcFallenTimeStamp > 0) {
-                const d = new Date(wsInfo.UtcFallenTimeStamp);
-                if (d.getFullYear() > 2000) {
-                    fTime = String(d.getHours()).padStart(2, '0') + ":" + String(d.getMinutes()).padStart(2, '0') + ":" + String(d.getSeconds()).padStart(2, '0');
-                }
+            let dGuildName = wsGuildData[wsInfo.GuildId] || "-";
+            let aGuildName = wsGuildData[wsInfo.AttackerGuildId] || "-";
+            
+            if (wsInfo.GvgCastleState == 2 || wsInfo.GvgCastleState == 3) {
+                let temp = dGuildName; dGuildName = aGuildName; aGuildName = temp;
             }
 
-            // ★ ここで各時刻を整形して格納
-            const row = { 
-                CastleID: i, 
-                DefenseGuildName: dGuild, 
-                AttackGuildName: aGuild, 
-                DefensePartyCount: wsInfo.DefensePartyCount || 0, 
-                AttackPartyCount: wsInfo.AttackPartyCount || 0, 
-                DefenseTime: formatTimeStr(logInfo.DefenseTime), 
-                AttackTime: formatTimeStr(logInfo.AttackTime), 
-                FallenTime: fTime, 
-                CounterTime: formatTimeStr(logInfo.CounterTime) 
-            };
-            combinedData.push(row);
-
-            const mapCastle = document.querySelector(`gvg-castle[castle-id="${i}"]`);
-            if (mapCastle) {
-                const status = mapCastle.querySelector('gvg-status');
-                mapCastle.querySelector('gvg-status-bar-defense').textContent = dGuild;
-                mapCastle.querySelector('gvg-status-bar-offense').textContent = aGuild;
-                mapCastle.querySelector('gvg-status-icon-defense').textContent = row.DefensePartyCount;
-                mapCastle.querySelector('gvg-status-icon-offense').textContent = row.AttackPartyCount;
-                if (row.AttackPartyCount > 0 || aGuild !== "-") { status.setAttribute('active', ""); status.removeAttribute('neutral'); }
-                else { status.setAttribute('neutral', ""); status.removeAttribute('active'); }
-            }
+            combinedData.push({
+                CastleID: i,
+                DefenseGuildName: dGuildName,
+                AttackGuildName: aGuildName,
+                DefensePartyCount: wsInfo.DefensePartyCount || 0,
+                AttackPartyCount: wsInfo.AttackPartyCount || 0,
+                DefenseTime: logInfo.DefenseTime || "-",
+                AttackTime: logInfo.AttackTime || "-",
+                FallenTime: logInfo.FallenTime || "-",
+                CounterTime: logInfo.CounterTime || "-"
+            });
         }
-        renderTable(combinedData);
+
+        let html = `<table>
+            <colgroup>
+                <col style="width: 40px;">   <col style="width: 120px;">  <col style="width: 150px;">  <col style="width: 110px;">  <col style="width: 150px;">  <col style="width: 60px;">   <col style="width: 120px;">  <col style="width: 120px;">  <col style="width: 120px;">  <col style="width: 120px;">  </colgroup>
+            <thead><tr>
+            <th>ID</th><th>拠点名</th><th class="c-defense">防衛ギルド</th><th style="text-align:center;">侵攻/防衛PT</th><th class="c-attack">侵攻ギルド</th><th>状態</th>
+            <th class="c-defense">防衛開始</th><th class="c-attack">攻撃開始</th><th class="c-fallen">陥落時刻</th><th class="c-counter">反撃時刻</th>
+        </tr></thead><tbody>`;
+
+        combinedData.sort((a, b) => a.CastleID - b.CastleID).forEach(row => {
+            const id = String(row.CastleID);
+            const cName = castleNames[id] || `拠点 ${id}`;
+            
+            let label = '確定', sClass = 's-defense';
+            if (row.FallenTime !== "-") { 
+                label = '陥落'; sClass = 's-fallen'; 
+            } else if (row.AttackTime !== "-" || (row.AttackGuildName !== "-")) { 
+                label = '宣戦'; sClass = 's-battle'; 
+            }
+
+            html += `<tr>
+                <td style="color:var(--accent); font-weight:bold; text-align:center;">${id}</td>
+                <td><strong>${cName}</strong></td>
+                <td class="c-defense">${row.DefenseGuildName}</td>
+                <td style="text-align:center; font-family:var(--mono);">
+                    <strong class="c-attack">${row.AttackPartyCount}</strong><span style="color:var(--muted)"> / </span><strong class="c-defense">${row.DefensePartyCount}</strong>
+                </td>
+                <td class="c-attack">${row.AttackGuildName}</td>
+                <td style="text-align:center;"><span class="badge ${sClass}">${label}</span></td>
+                <td class="time-cell c-defense">${row.DefenseTime}</td>
+                <td class="time-cell c-attack">${row.AttackTime}</td>
+                <td class="time-cell c-fallen">${row.FallenTime}</td>
+                <td class="time-cell c-counter">${row.CounterTime}</td>
+            </tr>`;
+        });
+        document.getElementById('tableContainer').innerHTML = html + `</tbody></table>`;
         updateGuildSummary(combinedData);
     }
 
-    function renderTable(data) {
-        let html = `<table><colgroup><col style="width: 40px;"><col style="width: 120px;"><col style="width: 150px;"><col style="width: 110px;"><col style="width: 150px;"><col style="width: 60px;"><col style="width: 120px;"><col style="width: 120px;"><col style="width: 120px;"><col style="width: 120px;"></colgroup><thead><tr><th>ID</th><th>拠点名</th><th class="c-defense">防衛ギルド</th><th style="text-align:center;">防衛/侵攻PT</th><th class="c-attack">侵攻ギルド</th><th>状態</th><th class="c-defense">防衛開始</th><th class="c-attack">攻撃開始</th><th class="c-fallen">陥落時刻</th><th class="c-counter">反撃時刻</th></tr></thead><tbody>`;
-        data.sort((a, b) => a.CastleID - b.CastleID).forEach(row => {
-            let label = '確定', sClass = 's-defense';
-            if (row.FallenTime !== "-") { label = '陥落'; sClass = 's-fallen'; }
-            else if (row.AttackTime !== "-" || row.AttackGuildName !== "-") { label = '宣戦'; sClass = 's-battle'; }
-            
-            html += `<tr><td style="color:var(--accent); font-weight:bold; text-align:center;">${row.CastleID}</td><td><strong>${castleNames[row.CastleID] || `拠点 ${row.CastleID}`}</strong></td><td class="c-defense">${row.DefenseGuildName}</td><td style="text-align:center; font-family:var(--mono);"><strong class="c-defense">${row.DefensePartyCount}</strong><span style="color:var(--muted)"> / </span><strong class="c-attack">${row.AttackPartyCount}</strong></td><td class="c-attack">${row.AttackGuildName}</td><td style="text-align:center;"><span class="badge ${sClass}">${label}</span></td><td class="time-cell c-defense">${row.DefenseTime}</td><td class="time-cell c-attack">${row.AttackTime}</td><td class="time-cell c-fallen">${row.FallenTime}</td><td class="time-cell c-counter">${row.CounterTime}</td></tr>`;
+    function updateGuildSummary(data) {
+        const summary = {};
+        data.forEach(row => {
+            const name = row.DefenseGuildName;
+            if (name && name !== "-") {
+                const count = row.DefensePartyCount || 0;
+                summary[name] = (summary[name] || 0) + Number(count);
+            }
         });
-        document.getElementById('tableContainer').innerHTML = html + `</tbody></table>`;
+        const sorted = Object.entries(summary).sort((a,b) => b[1] - a[1]);
+        document.getElementById('guildSummary').innerHTML = `<div class="summary-label">防衛パーティ数</div>` + 
+            sorted.map(([n, c]) => `<div class="guild-chip">${n}<b>${c}P</b></div>`).join('');
     }
 
-    function updateGuildSummary(data) {
-        const s = {}; data.forEach(r => { if(r.DefenseGuildName !== "-") s[r.DefenseGuildName] = (s[r.DefenseGuildName]||0) + Number(r.DefensePartyCount); });
-        const sorted = Object.entries(s).sort((a,b) => b[1] - a[1]);
-        document.getElementById('guildSummary').innerHTML = `<div class="summary-label">防衛パーティ数</div>` + sorted.map(([n, c]) => `<div class="guild-chip">${n}<b>${c}P</b></div>`).join('');
+    function setupDayTabs() {
+        const tabsContainer = document.getElementById('dayTabs');
+        tabsContainer.querySelectorAll('.day-tab').forEach(tab => {
+            if (tab.dataset.day === currentDay) tab.classList.add('active');
+            tab.addEventListener('click', () => {
+                tabsContainer.querySelectorAll('.day-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                currentDay = tab.dataset.day;
+                updateData();
+            });
+        });
     }
 
     function setupGroupSelect() {
-        const s = document.getElementById('groupSelect'), d = document.getElementById('selectedWorldDisplay');
-        const def = document.createElement('option'); def.value = ""; def.textContent = "選択してください"; s.appendChild(def);
-        Object.keys(GROUP_DATA).sort((a,b) => a-b).forEach(id => { const o = document.createElement('option'); o.value = id; o.textContent = `${id} [${GROUP_DATA[id]}]`; s.appendChild(o); });
-        s.addEventListener('change', () => { if (s.value) { d.textContent = `World: ${GROUP_DATA[s.value]}`; updateData(); } else { d.textContent = "Select..."; } });
+        const groupSelect = document.getElementById('groupSelect');
+        const display = document.getElementById('selectedWorldDisplay');
+        
+        const defaultOpt = document.createElement('option');
+        defaultOpt.value = ""; defaultOpt.textContent = "選択してください";
+        groupSelect.appendChild(defaultOpt);
+
+        Object.keys(GROUP_DATA).sort((a,b) => a-b).forEach(id => {
+            const opt = document.createElement('option'); 
+            opt.value = id; 
+            opt.textContent = `${id} [${GROUP_DATA[id]}]`;
+            groupSelect.appendChild(opt);
+        });
+
+        groupSelect.addEventListener('change', () => {
+            if (groupSelect.value) {
+                display.textContent = `World: ${GROUP_DATA[groupSelect.value]}`;
+                updateData();
+            } else {
+                display.textContent = "Select...";
+            }
+        });
     }
 
     document.getElementById('autoBtn').addEventListener('click', updateData);
     setInterval(() => { document.getElementById('clock').textContent = new Date().toLocaleTimeString(); }, 1000);
     
     async function init() { 
-        initMap();
-        const tabsContainer = document.getElementById('dayTabs');
-        tabsContainer.querySelectorAll('.day-tab').forEach(tab => {
-            if (tab.dataset.day === currentDay) tab.classList.add('active');
-            tab.addEventListener('click', () => { tabsContainer.querySelectorAll('.day-tab').forEach(t => t.classList.remove('active')); tab.classList.add('active'); currentDay = tab.dataset.day; updateData(); });
-        });
+        setupDayTabs();
         setupGroupSelect();
+        await fetchCastleNames(); 
     }
     init();
 </script>
