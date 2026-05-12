@@ -17,28 +17,43 @@
         body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 13px; min-height: 100vh; }
         
         header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 16px; position: sticky; top: 0; z-index: 101; }
-        .sticky-nav { position: sticky; top: 180px; z-index: 100; background: var(--bg); }
+        .sticky-nav { position: sticky; top: 195px; z-index: 100; background: var(--bg); }
 
         h1 { font-family: var(--mono); font-size: 14px; letter-spacing: 2px; color: var(--accent); margin-bottom: 12px; text-align: center; }
 
-        .controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; align-items: flex-end; }
-        .manual-row { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 2fr; gap: 8px; margin-top: 8px; }
-
+        /* グリッド配置を厳格に指定 */
+        .controls { 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 8px; 
+        }
+        
         .ctrl-group { display: flex; flex-direction: column; gap: 4px; }
         label { font-size: 9px; color: var(--muted); font-weight: bold; white-space: nowrap; }
-        select, input { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 8px 4px; font-size: 11px; border-radius: 4px; outline: none; width: 100%; }
-        
-        .world-info { font-size: 10px; color: var(--accent); background: rgba(59, 130, 246, 0.1); padding: 4px; border-radius: 4px; margin-top: 4px; text-align: center; display: block; min-height: 1.2em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        select, input { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 8px 4px; font-size: 11px; border-radius: 4px; outline: none; width: 100%; height: 35px; }
 
+        /* World情報を独立した行にする */
+        .world-row {
+            grid-column: 1 / -1; 
+            margin-top: 4px;
+        }
+        .world-info { 
+            font-size: 10px; color: var(--accent); background: rgba(59, 130, 246, 0.1); 
+            padding: 6px; border-radius: 4px; text-align: center; display: block; 
+            min-height: 1.2em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            border: 1px dashed rgba(59, 130, 246, 0.3);
+        }
+
+        .manual-row { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 2fr; gap: 8px; margin-top: 4px; }
         .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        button { border: none; color: #fff; padding: 8px; font-size: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; height: 35px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
         
+        button { border: none; color: #fff; padding: 8px; font-size: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; height: 35px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
         #autoBtn { background: var(--muted); width: 100%; }
         #autoBtn.active { background: var(--defense); box-shadow: 0 0 10px var(--defense); }
         .reset-btn { background: transparent; border: 1px solid var(--attack); color: var(--attack); }
 
         .status-bar { background: var(--surface); border-bottom: 1px solid var(--border2); padding: 8px 16px; display: flex; flex-direction: column; gap: 8px; }
-        .day-tabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; }
+        .day-tabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
         .day-tabs::-webkit-scrollbar { display: none; }
         .day-tab { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); padding: 4px 10px; border-radius: 3px; cursor: pointer; font-family: var(--mono); font-size: 10px; white-space: nowrap; }
         .day-tab.active { border-color: var(--accent); color: var(--accent); background: #1a2030; }
@@ -54,7 +69,7 @@
         .guild-chip b { color: var(--defense); margin-left: 6px; }
 
         .main { padding: 10px; }
-        #tableContainer { width: 100%; overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; -webkit-overflow-scrolling: touch; min-height: 200px; }
+        #tableContainer { width: 100%; overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; min-height: 200px; }
         table { width: 100%; border-collapse: separate; border-spacing: 0; font-family: var(--mono); font-size: 12px; min-width: 1000px; }
         thead th { background: var(--surface2); padding: 12px 10px; text-align: left; color: var(--muted); position: sticky; top: 0; border-bottom: 1px solid var(--border); font-size: 11px; z-index: 2; }
         tbody td { padding: 10px; border-bottom: 1px solid var(--border2); white-space: nowrap; }
@@ -75,11 +90,12 @@
 
         @media (min-width: 768px) {
             h1 { text-align: left; }
-            .controls { grid-template-columns: 2fr 1fr 1fr 1fr 2fr; gap: 10px; }
+            .controls { grid-template-columns: 1fr 1fr 1fr 1.5fr 1fr 2fr; gap: 10px; }
+            .world-row { grid-column: auto; margin-top: 0; }
             .manual-row { grid-column: auto; display: contents; }
             .status-bar { flex-direction: row; align-items: center; justify-content: space-between; }
             .status-info { width: auto; gap: 20px; }
-            .sticky-nav { top: 100px; } 
+            .sticky-nav { top: 110px; } 
         }
     </style>
 </head>
@@ -91,7 +107,6 @@
         <div class="ctrl-group">
             <label>GROUP</label>
             <select id="groupSelect"></select>
-            <div id="selectedWorldDisplay" class="world-info">World: -</div>
         </div>
         <div class="ctrl-group">
             <label>CLASS</label>
@@ -111,10 +126,15 @@
             </select>
         </div>
         
+        <div class="world-row">
+            <label>WORLD INFO</label>
+            <div id="selectedWorldDisplay" class="world-info">World: -</div>
+        </div>
+        
         <div class="manual-row">
             <div class="ctrl-group">
                 <label>MANUAL ID</label>
-                <input type="number" id="groupManual" placeholder="ID (ex: 141)">
+                <input type="number" id="groupManual" placeholder="ID">
             </div>
             <div class="btn-group">
                 <button id="autoBtn"><span class="indicator"></span>FETCH</button>
@@ -154,7 +174,6 @@
     const LOG_API = 'https://api.tamamo.dev/GvGLog';
     const CASTLE_API = 'https://tamamo.dev/assets/Resource/CastleId.json';
     
-    // 全グループデータを完全復元
     const GROUP_DATA = { 
         18: "W85, W89, W93, W97", 19: "W101, W105, W109, W113", 20: "W104, W108, W112, W116", 21: "W117, W121, W125, W129",
         140: "W149-152", 141: "W1, W7, W12, W19", 142: "W2, W8, W20, W27", 143: "W3, W4, W13, W31", 144: "W5, W9, W21, W30", 
@@ -181,21 +200,14 @@
     function setupGroupList() {
         const select = document.getElementById('groupSelect');
         const display = document.getElementById('selectedWorldDisplay');
-        
         select.innerHTML = '<option value="">-- SELECT --</option>';
-        // 18から180まで数字順に並べる
         Object.keys(GROUP_DATA).sort((a,b) => Number(a)-Number(b)).forEach(id => {
             const opt = document.createElement('option');
             opt.value = id; opt.textContent = `${id}`;
             select.appendChild(opt);
         });
-
         select.addEventListener('change', () => {
-            if (select.value && GROUP_DATA[select.value]) {
-                display.textContent = `World: ${GROUP_DATA[select.value]}`;
-            } else {
-                display.textContent = "World: -";
-            }
+            display.textContent = select.value ? `World: ${GROUP_DATA[select.value]}` : "World: -";
         });
     }
 
@@ -204,19 +216,14 @@
             const res = await fetch(CASTLE_API);
             const data = await res.json();
             data.forEach(item => { castleNames[item.Id] = item.Name; });
-        } catch (e) { console.error("Castle names failed"); }
+        } catch (e) {}
     }
 
     async function updateData() {
         if (isFetching) return;
         const group = document.getElementById('groupManual').value || document.getElementById('groupSelect').value;
         const statusEl = document.getElementById('updateStatus');
-        
-        if (!group) {
-            statusEl.textContent = "ID未入力";
-            statusEl.style.color = "#ef4444";
-            return;
-        }
+        if (!group) { statusEl.textContent = "ID未入力"; return; }
 
         isFetching = true;
         statusEl.textContent = "FETCHING...";
@@ -230,21 +237,17 @@
             const res = await fetch(url);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
-            
             if (!data || data.length === 0) {
-                statusEl.textContent = "データ空(ID/曜日違い?)";
-                statusEl.style.color = "#f97316";
-                document.getElementById('tableContainer').innerHTML = "<p style='text-align:center; padding:40px; color:var(--muted);'>データが見つかりませんでした。</p>";
+                statusEl.textContent = "データ空";
                 return;
             }
-
             processHistory(data);
             updateGuildSummary(data);
             renderTable(data);
             statusEl.textContent = `OK: ${new Date().toLocaleTimeString()}`;
             statusEl.style.color = "var(--defense)";
         } catch (e) {
-            statusEl.textContent = "通信失敗: " + e.message;
+            statusEl.textContent = "通信失敗";
             statusEl.style.color = "#ef4444";
         } finally { isFetching = false; }
     }
