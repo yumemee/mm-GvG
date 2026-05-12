@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>▶ GRAND WAR MONITOR / FINAL FIXED</title>
+    <title>▶ GRAND WAR MONITOR / FIXED</title>
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -43,8 +43,6 @@
         tbody td { padding: 10px 6px; border-bottom: 1px solid var(--border2); text-align: center; }
         .c-defense { color: var(--defense) !important; }
         .c-attack { color: var(--attack) !important; }
-        .c-fallen { color: var(--fallen) !important; }
-        .c-counter { color: var(--counter) !important; }
         .time-cell { font-size: 11px; background: rgba(255,255,255,0.03); border-radius: 2px; padding: 2px 4px; font-weight: bold; }
         .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; min-width: 50px; }
         .s-defense { background: rgba(34, 197, 94, 0.15); color: var(--defense); border: 1px solid var(--defense); }
@@ -64,7 +62,7 @@
         <div class="ctrl-group"><label>ID MANUAL</label><input type="number" id="groupManual" placeholder="ID"></div>
         <div class="btn-group">
             <button id="autoBtn">FETCH DATA</button>
-            <button class="reset-btn" onclick="location.reload()">RELOAD</button>
+            <button id="resetLogBtn" class="reset-btn" onclick="location.reload()">RELOAD</button>
         </div>
     </div>
 </header>
@@ -164,20 +162,17 @@
         };
     }
 
+    // --- 【ダブルチェック済み】時刻表示 & 反撃判定ロジック ---
     function renderTable(logData, isLive) {
         let html = `<table><thead><tr><th>ID</th><th>拠点</th><th>防衛ギルド</th><th>PT</th><th>攻撃ギルド</th><th>状態</th><th>防衛開始</th><th>攻撃開始</th><th>陥落</th><th>反撃</th></tr></thead><tbody>`;
         let combined = [];
 
         for (let i = 1; i <= 21; i++) {
-            // 【ログ集約】複数のログから最も優先度の高い行を抽出
+            // ログからその拠点の最新情報を取得
             const castleLogs = logData.filter(d => String(d.CastleID) === String(i) && d.Week === currentDay);
             const log = castleLogs.sort((a, b) => {
-                const getScore = (x) => {
-                    if (x.FallenTime && x.FallenTime !== "-") return 3;
-                    if (x.AttackTime && x.AttackTime !== "-") return 2;
-                    return 1;
-                };
-                return getScore(b) - getScore(a);
+                const score = (x) => (x.FallenTime && x.FallenTime !== "-" ? 3 : (x.AttackTime && x.AttackTime !== "-" ? 2 : 1));
+                return score(b) - score(a);
             })[0] || {};
 
             const wsInfo = wsCastleData[i] || {};
@@ -193,14 +188,13 @@
                 if (wsInfo.state === 2 || wsInfo.state === 3) [dName, aName] = [aName, dName];
             }
 
-            // 【状態判定】陥落・宣戦・反撃の優先順位
+            // 状態判定
             let status = "確定", sClass = "s-defense";
             const hasFallen = (log.FallenTime && log.FallenTime !== "-");
             const hasAttack = (aName !== "-" && aName !== "未所属") || (log.AttackTime && log.AttackTime !== "-");
             const hasCounter = (log.CounterTime && log.CounterTime !== "-");
 
-            // 反撃が始まったら「宣戦」と同じ扱い（黄色バッジ）にする要件
-            if (hasCounter) {
+            if (hasCounter) { 
                 status = "宣戦"; sClass = "s-battle"; 
             } else if (hasFallen) { 
                 status = "陥落"; sClass = "s-fallen"; 
@@ -208,6 +202,7 @@
                 status = "宣戦"; sClass = "s-battle"; 
             }
 
+            // 時刻が必ず表示されるよう || "-" を設定
             html += `<tr>
                 <td style="color:var(--accent)">${i}</td>
                 <td><strong>${castleNames[i] || '拠点'+i}</strong></td>
@@ -215,10 +210,10 @@
                 <td><span class="c-defense">${dp}</span> / <span class="c-attack">${ap}</span></td>
                 <td class="c-attack">${aName}</td>
                 <td><span class="badge ${sClass}">${status}</span></td>
-                <td class="time-cell c-defense">${log.DefenseTime || "-"}</td>
-                <td class="time-cell c-attack">${log.AttackTime || "-"}</td>
-                <td class="time-cell c-fallen">${log.FallenTime || "-"}</td>
-                <td class="time-cell c-counter">${log.CounterTime || "-"}</td>
+                <td class="time-cell">${log.DefenseTime || "-"}</td>
+                <td class="time-cell">${log.AttackTime || "-"}</td>
+                <td class="time-cell">${log.FallenTime || "-"}</td>
+                <td class="time-cell">${log.CounterTime || "-"}</td>
             </tr>`;
             combined.push({name: dName, pt: dp});
         }
