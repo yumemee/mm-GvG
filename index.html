@@ -187,6 +187,7 @@
             if (res && res.ok) {
                 const json = await res.json();
                 logDataArray = json.data?.Log || [];
+                console.log("APIから取得したログ:", logDataArray);
             }
         } catch (e) { console.warn("Log API fallback"); }
 
