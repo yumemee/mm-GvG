@@ -179,15 +179,22 @@
 
     function combineAndRender(logDataArray, isTodaySelected) {
         let combinedData = [];
-        const todayStr = new Date().toISOString().split('T')[0];
+        
+        // 選択されているタブの「曜日」を取得
+        const selectedDay = currentDay; 
 
         for (let i = 1; i <= 21; i++) {
-            // ログデータから該当する拠点を探す
-            let logInfo = logDataArray.find(d => String(d.CastleID) === String(i)) || {};
+            // 全てのログの中から、この拠点(i)かつ、選択中の曜日(selectedDay)に一致するログを探す
+            let logInfo = logDataArray.find(d => 
+                String(d.CastleID) === String(i) && d.Week === selectedDay
+            ) || {};
+            
             let wsInfo = wsCastleData[i] || {};
 
-            // 「今日」以外のタブならWebSocketデータ（リアルタイム情報）は隠す
             let dName = "-", aName = "-", dP = 0, aP = 0;
+            
+            // リアルタイム情報（防衛パーティ数など）は「今日」かつ「ログがない」場合のみ表示
+            // ※ログがある＝既に陥落済みか確定済みなので、ログを優先
             if (isTodaySelected) {
                 dName = wsGuildData[wsInfo.GuildId] || "-";
                 aName = wsGuildData[wsInfo.AttackerGuildId] || "-";
@@ -198,29 +205,31 @@
                 }
             }
 
-            // 時刻データの表示判定：
-            // 1. そのタブが今日である
-            // 2. ログ内の日付(CreatedやDate)が今日である、または今日がその曜日である
-            const logDate = logInfo.Created?.split(' ')[0] || logInfo.Date || "";
-            const isLogToday = (logDate === todayStr || logDate === ""); 
-            const showTime = isTodaySelected && logDataArray.length > 0;
+            // 時刻データの表示判定
+            const hasLog = (logInfo.DefenseTime || logInfo.AttackTime || logInfo.FallenTime);
 
             combinedData.push({
-                CastleID: i, DefenseGuildName: dName, AttackGuildName: aName,
-                DefensePartyCount: dP, AttackPartyCount: aP,
-                DefenseTime: showTime ? (logInfo.DefenseTime || "-") : "-",
-                AttackTime:  showTime ? (logInfo.AttackTime || "-") : "-",
-                FallenTime:  showTime ? (logInfo.FallenTime || "-") : "-",
-                CounterTime: showTime ? (logInfo.CounterTime || "-") : "-"
+                CastleID: i, 
+                // ログにギルド名があればそれを優先、なければリアルタイム情報を表示
+                DefenseGuildName: logInfo.DefenseGuildName || dName, 
+                AttackGuildName: logInfo.AttackGuildName || aName,
+                DefensePartyCount: dP, 
+                AttackPartyCount: aP,
+                DefenseTime: hasLog ? (logInfo.DefenseTime || "-") : "-",
+                AttackTime:  hasLog ? (logInfo.AttackTime || "-") : "-",
+                FallenTime:  hasLog ? (logInfo.FallenTime || "-") : "-",
+                CounterTime: hasLog ? (logInfo.CounterTime || "-") : "-"
             });
         }
 
+        // --- ここから下のテーブル描画処理（HTML生成）は以前と同じ ---
         let html = `<table><thead><tr><th>ID</th><th>拠点名</th><th class="c-defense">防衛ギルド</th><th>防衛/侵攻PT</th><th class="c-attack">侵攻ギルド</th><th>状態</th><th class="c-defense">防衛開始</th><th class="c-attack">攻撃開始</th><th class="c-fallen">陥落時刻</th><th class="c-counter">反撃時刻</th></tr></thead><tbody>`;
         combinedData.forEach(row => {
             const name = castleNames[row.CastleID] || `拠点 ${row.CastleID}`;
             let label = '確定', sClass = 's-defense';
             if (row.FallenTime !== "-") { label = '陥落'; sClass = 's-fallen'; }
             else if (row.AttackTime !== "-" || row.AttackGuildName !== "-") { label = '宣戦'; sClass = 's-battle'; }
+            else if (row.DefenseTime !== "-") { label = '防衛中'; sClass = 's-defense'; }
 
             html += `<tr>
                 <td style="color:var(--accent); font-weight:bold;">${row.CastleID}</td>
