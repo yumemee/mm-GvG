@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>▶ GRAND WAR MONITOR / FIXED</title>
+    <title>▶ GRAND WAR MONITOR / COLOR FIXED</title>
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -44,7 +44,6 @@
 
         .status-bar { background: var(--surface); border-bottom: 1px solid var(--border2); padding: 8px 16px; display: flex; flex-direction: column; gap: 8px; }
         .day-tabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
-        .day-tabs::-webkit-scrollbar { display: none; }
         .day-tab { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); padding: 4px 10px; border-radius: 3px; cursor: pointer; font-family: var(--mono); font-size: 10px; white-space: nowrap; }
         .day-tab.active { border-color: var(--accent); color: var(--accent); background: #1a2030; }
         
@@ -68,7 +67,12 @@
         table th:nth-child(2), table td:nth-child(2) { position: sticky; left: 40px; z-index: 3; border-right: 1px solid var(--border); background: var(--surface); }
         thead th:nth-child(1), thead th:nth-child(2) { background: var(--surface2) !important; }
 
+        /* セル内テキストの色 */
         .time-cell { font-size: 11px; color: var(--text); background: rgba(255,255,255,0.03); border-radius: 2px; padding: 2px 4px; text-align: center; }
+        .c-defense { color: var(--defense) !important; }
+        .c-battle { color: var(--battle) !important; }
+        .c-fallen { color: var(--fallen) !important; }
+
         .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; }
         .s-battle { background: #3d2e00; color: var(--battle); }
         .s-fallen { background: #3d1000; color: var(--fallen); }
@@ -237,7 +241,6 @@
 
         try {
             const res = await fetch(url);
-            if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
             const json = await res.json();
             const logData = json.data && json.data.Log ? json.data.Log : [];
             
@@ -252,7 +255,6 @@
             
             statusEl.textContent = `OK: ${new Date().toLocaleTimeString()}`;
             statusEl.style.color = "var(--defense)";
-
         } catch (e) {
             console.error(e);
             statusEl.textContent = "通信失敗";
@@ -268,10 +270,10 @@
             <th style="color:var(--defense)">防衛ギルド</th>
             <th style="color:var(--attack)">侵攻ギルド</th>
             <th>状態</th>
-            <th>防衛開始</th>
-            <th>攻撃開始</th>
-            <th>陥落時刻</th>
-            <th>反撃時刻</th>
+            <th style="color:var(--defense)">防衛開始</th>
+            <th style="color:var(--battle)">攻撃開始</th>
+            <th style="color:var(--fallen)">陥落時刻</th>
+            <th style="color:var(--battle)">反撃時刻</th>
         </tr></thead><tbody>`;
 
         data.sort((a, b) => a.CastleID - b.CastleID).forEach(row => {
@@ -284,13 +286,13 @@
             html += `<tr>
                 <td style="color:var(--accent); font-weight:bold;">${id}</td>
                 <td><strong>${castleNames[id] || '拠点 '+id}</strong></td>
-                <td style="color:var(--defense); font-weight:bold;">${row.DefenseGuildName || '-'}</td>
-                <td style="color:var(--attack); font-weight:bold;">${row.AttackGuildName || '-'}</td>
+                <td style="color:var(--defense)">${row.DefenseGuildName || '-'}</td>
+                <td style="color:var(--attack)">${row.AttackGuildName || '-'}</td>
                 <td><span class="badge ${sClass}">${label}</span></td>
-                <td class="time-cell">${row.DefenseTime || '-'}</td>
-                <td class="time-cell">${row.AttackTime || '-'}</td>
-                <td class="time-cell" style="color:var(--fallen)">${row.FallenTime || '-'}</td>
-                <td class="time-cell">${row.CounterTime || '-'}</td>
+                <td class="time-cell c-defense">${row.DefenseTime || '-'}</td>
+                <td class="time-cell c-battle">${row.AttackTime || '-'}</td>
+                <td class="time-cell c-fallen">${row.FallenTime || '-'}</td>
+                <td class="time-cell c-battle">${row.CounterTime || '-'}</td>
             </tr>`;
         });
         document.getElementById('tableContainer').innerHTML = html + `</tbody></table>`;
@@ -299,9 +301,9 @@
     function updateGuildSummary(data) {
         const summary = {};
         data.forEach(row => { 
-            const gName = row.DefenseGuildName;
-            if (gName && gName !== "-") {
-                summary[gName] = (summary[gName] || 0) + (row.DefensePartyCount || 0);
+            const name = row.DefenseGuildName;
+            if (name && name !== "-") {
+                summary[name] = (summary[name] || 0) + (row.DefensePartyCount || 0);
             }
         });
         const container = document.getElementById('guildSummary');
@@ -329,13 +331,6 @@
                 this.innerHTML = '<span class="indicator"></span>FETCH';
             }, 800);
         });
-    });
-
-    document.getElementById('resetLogBtn').addEventListener('click', () => {
-        if (confirm(`${currentDay}の履歴をすべてリセットしますか？`)) { 
-            localStorage.removeItem(`gvg_history_log_${currentDay}`); 
-            location.reload();
-        }
     });
 
     async function init() { setupGroupList(); await fetchCastleNames(); }
