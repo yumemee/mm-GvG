@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>▶ GRAND WAR MONITOR / INTEGRATED VERSION</title>
+    <title>▶ GRAND WAR MONITOR / GLOBAL ONLY</title>
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -39,8 +39,8 @@
 
         .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; grid-column: 1 / -1; margin-top: 8px; }
         button { border: none; color: #fff; padding: 8px; font-size: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; height: 35px; transition: all 0.2s; }
-        #autoBtn { background: var(--muted); }
-        #autoBtn.active { background: var(--defense); box-shadow: 0 0 10px var(--defense); }
+        #autoBtn { background: var(--accent); }
+        #autoBtn:hover { opacity: 0.8; }
         .reset-btn { background: transparent; border: 1px solid var(--attack); color: var(--attack); }
 
         .status-bar { background: var(--surface); border-bottom: 1px solid var(--border2); padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; }
@@ -82,9 +82,10 @@
 <body>
 
 <header>
-    <h1>▶ GRAND WAR MONITOR</h1>
+    <h1>▶ GRAND WAR MONITOR [GLOBAL]</h1>
     <div class="controls">
-        <div class="ctrl-group"><label>MODE</label><select id="modeSelect"><option value="global" selected>Global</option><option value="local">Local</option></select></div>
+        <!-- MODEをGlobalに固定 -->
+        <div class="ctrl-group"><label>MODE</label><select id="modeSelect" disabled><option value="global" selected>Global</option></select></div>
         <div class="ctrl-group"><label>GROUP</label><select id="groupSelect"></select></div>
         <div class="ctrl-group"><label>CLASS</label><select id="classSelect"><option value="3" selected>G-Master</option><option value="2">Expert</option><option value="1">Elite</option></select></div>
         <div class="ctrl-group"><label>BLOCK</label><select id="blockSelect"><option value="0">A</option><option value="1" selected>B</option><option value="2">C</option><option value="3">D</option></select></div>
@@ -92,7 +93,7 @@
         <div class="ctrl-group"><label>ID MANUAL</label><input type="number" id="groupManual" placeholder="ID"></div>
         <div class="btn-group">
             <button id="autoBtn">FETCH</button>
-            <button id="resetLogBtn" class="reset-btn">RESET</button>
+            <button id="resetLogBtn" class="reset-btn" onclick="location.reload()">RESET</button>
         </div>
     </div>
 </header>
@@ -113,6 +114,15 @@
     const BASE_LOG_API = 'https://api.tamamo.dev/GvGLog';
     const CASTLE_API = 'https://tamamo.dev/assets/Resource/CastleId.json';
     
+    // 指定されたGlobalGvGの拠点名/IDマッピング
+    const GLOBAL_CASTLE_MAP = {
+        "1": "アイン", "2": "イエソド", "3": "マルクト", "4": "ケテル", "5": "テファレト",
+        "6": "クシェル", "7": "シトリ", "8": "トパズ", "9": "メラル", "10": "ペリド",
+        "11": "ファリア", "12": "ラピス", "13": "ラリマル", "14": "マリン", "15": "アメト",
+        "16": "ラベン", "17": "シルコン", "18": "オニキス", "19": "フロライト", "20": "ガネット",
+        "21": "ルラ"
+    };
+
     const GROUP_DATA = { 
         18: "W85, W89, W93, W97", 19: "W101, W105, W109, W113", 20: "W104, W108, W112, W116", 21: "W117, W121, W125, W129",
         140: "W149-152", 141: "W1, W7, W12, W19", 142: "W2, W8, W20, W27", 143: "W3, W4, W13, W31", 144: "W5, W9, W21, W30", 
@@ -127,18 +137,29 @@
         177: "W136, W140, W141, W146", 178: "W153, W154, W155, W156", 179: "W157, W158, W159, W160", 180: "W161-W164"
     };
 
-    let castleNames = {};
+    let castleNames = { ...GLOBAL_CASTLE_MAP }; // 初期状態でGlobalのIDをセット
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     let currentDay = dayNames[new Date().getDay()] === 'Mon' ? 'Sat' : dayNames[new Date().getDay()];
 
     async function fetchCastleNames() {
         try {
+            // APIから最新情報を取得を試みる（CORSプロキシ経由）
             const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(CASTLE_API + '?_t=' + Date.now())}`);
             const data = await res.json();
-            if (Array.isArray(data)) {
+            
+            // globalGvGセクションが存在すればそれを優先してマッピング
+            if (data.globalGvG) {
+                Object.entries(data.globalGvG).forEach(([name, id]) => {
+                    castleNames[String(id)] = name;
+                });
+            } else if (Array.isArray(data)) {
+                // 配列形式の場合のフォールバック
                 data.forEach(item => { castleNames[String(item.id)] = item.name; });
             }
-        } catch (e) { console.error("Castle names fetch error"); }
+        } catch (e) { 
+            console.error("Castle names fetch error, using fallback map."); 
+            // 失敗時は初期化した GLOBAL_CASTLE_MAP をそのまま使用
+        }
     }
 
     async function updateData() {
@@ -160,8 +181,7 @@
             const json = await res.json();
             const logData = json.data?.Log || [];
 
-            if (Object.keys(castleNames).length === 0) await fetchCastleNames();
-
+            // 描画実行
             renderTable(logData);
             updateGuildSummary(logData);
             statusEl.textContent = "OK (" + currentDay + "): " + new Date().toLocaleTimeString();
@@ -174,6 +194,7 @@
             <th class="c-defense">防衛開始</th><th class="c-attack">攻撃開始</th><th class="c-fallen">陥落時刻</th><th class="c-counter">反撃時刻</th>
         </tr></thead><tbody>`;
 
+        // ID順にソートして表示
         data.sort((a, b) => a.CastleID - b.CastleID).forEach(row => {
             const id = String(row.CastleID);
             const dGuild = row.DefenseGuildName || row.defenseGuildName || "-";
@@ -206,7 +227,10 @@
         const summary = {};
         data.forEach(row => {
             const name = row.DefenseGuildName || row.defenseGuildName;
-            if (name && name !== "-") summary[name] = (summary[name] || 0) + (row.DefensePartyCount || 0);
+            if (name && name !== "-") {
+                const count = row.DefensePartyCount || 0;
+                summary[name] = (summary[name] || 0) + count;
+            }
         });
         const sorted = Object.entries(summary).sort((a,b) => b[1] - a[1]);
         document.getElementById('guildSummary').innerHTML = `<div class="summary-label">防衛パーティ数</div>` + 
@@ -214,10 +238,11 @@
     }
 
     function setupDayTabs() {
-        document.querySelectorAll('.day-tab').forEach(tab => {
+        const tabsContainer = document.getElementById('dayTabs');
+        tabsContainer.querySelectorAll('.day-tab').forEach(tab => {
             if (tab.dataset.day === currentDay) tab.classList.add('active');
             tab.addEventListener('click', () => {
-                document.querySelectorAll('.day-tab').forEach(t => t.classList.remove('active'));
+                tabsContainer.querySelectorAll('.day-tab').forEach(t => t.classList.remove('active'));
                 tab.classList.add('active');
                 currentDay = tab.dataset.day;
                 updateData();
@@ -228,12 +253,26 @@
     function setupGroupSelect() {
         const groupSelect = document.getElementById('groupSelect');
         const display = document.getElementById('selectedWorldDisplay');
+        
+        // デフォルトの空オプション
+        const defaultOpt = document.createElement('option');
+        defaultOpt.value = ""; defaultOpt.textContent = "選択してください";
+        groupSelect.appendChild(defaultOpt);
+
         Object.keys(GROUP_DATA).sort((a,b) => a-b).forEach(id => {
-            const opt = document.createElement('option'); opt.value = id; opt.textContent = `${id} [${GROUP_DATA[id]}]`;
+            const opt = document.createElement('option'); 
+            opt.value = id; 
+            opt.textContent = `${id} [${GROUP_DATA[id]}]`;
             groupSelect.appendChild(opt);
         });
+
         groupSelect.addEventListener('change', () => {
-            display.textContent = groupSelect.value ? `World: ${GROUP_DATA[groupSelect.value]}` : "Select...";
+            if (groupSelect.value) {
+                display.textContent = `World: ${GROUP_DATA[groupSelect.value]}`;
+                updateData();
+            } else {
+                display.textContent = "Select...";
+            }
         });
     }
 
@@ -243,7 +282,8 @@
     async function init() { 
         setupDayTabs();
         setupGroupSelect();
-        await fetchCastleNames(); 
+        await fetchCastleNames(); // 拠点名マッピングをロード
+        // 初期データが必要な場合はここにupdateData()を追加
     }
     init();
 </script>
