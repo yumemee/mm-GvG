@@ -1,9 +1,10 @@
+<!-- デザイン部分は以前のものを継承し、Script部分を抜本的に修正 -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>▶ GRAND WAR MONITOR / FIXED</title>
+    <title>▶ GRAND WAR MONITOR / FINAL FIXED</title>
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -163,29 +164,32 @@
     }
 
     function renderTable(logData, isLive) {
-        let html = `<table><thead><tr><th>ID</th><th>拠点</th><th>防衛ギルド</th><th>防衛pt/侵攻pt</th><th>攻撃ギルド</th><th>状態</th><th>防衛開始</th><th>攻撃開始</th><th>陥落</th><th>反撃</th></tr></thead><tbody>`;
+        let html = `<table><thead><tr><th>ID</th><th>拠点</th><th>防衛ギルド</th><th>PT</th><th>攻撃ギルド</th><th>状態</th><th>防衛開始</th><th>攻撃開始</th><th>陥落</th><th>反撃</th></tr></thead><tbody>`;
         let combined = [];
 
         for (let i = 1; i <= 21; i++) {
-            // 【絶対条件：時刻表示の修正】
-            // 該当拠点の全ログから、時刻データ（Defense/Attack/Fallen/Counter）のいずれかが入っているものを抽出
-            const castleLogs = logData.filter(d => String(d.CastleID) === String(i) && d.Week === currentDay);
+            // 【火曜日対応：全ログ行をマージする新ロジック】
+            const castleLogs = logData.filter(d => String(d.CastleID) === String(i));
             
-            // 最も「中身が詰まっている」ログを探すスコアリング
-            const log = castleLogs.sort((a, b) => {
-                const getScore = (x) => {
-                    let s = 0;
-                    if (x.CounterTime && x.CounterTime !== "-") s += 100;
-                    if (x.FallenTime && x.FallenTime !== "-") s += 50;
-                    if (x.AttackTime && x.AttackTime !== "-") s += 10;
-                    if (x.DefenseTime && x.DefenseTime !== "-") s += 1;
-                    return s;
-                };
-                return getScore(b) - getScore(a);
-            })[0] || {};
+            // 全行から存在する時刻をかき集める
+            const merged = {
+                DefenseGuildName: "-", AttackGuildName: "-",
+                DefenseTime: "-", AttackTime: "-", FallenTime: "-", CounterTime: "-"
+            };
+
+            castleLogs.forEach(entry => {
+                if (entry.DefenseTime && entry.DefenseTime !== "-") merged.DefenseTime = entry.DefenseTime;
+                if (entry.AttackTime && entry.AttackTime !== "-") merged.AttackTime = entry.AttackTime;
+                if (entry.FallenTime && entry.FallenTime !== "-") merged.FallenTime = entry.FallenTime;
+                if (entry.CounterTime && entry.CounterTime !== "-") merged.CounterTime = entry.CounterTime;
+                
+                // ギルド名は最新（一番下）のものを採用
+                if (entry.DefenseGuildName) merged.DefenseGuildName = entry.DefenseGuildName;
+                if (entry.AttackGuildName && entry.AttackGuildName !== "未所属") merged.AttackGuildName = entry.AttackGuildName;
+            });
 
             const wsInfo = wsCastleData[i] || {};
-            let dName = log.DefenseGuildName || "-", aName = log.AttackGuildName || "-";
+            let dName = merged.DefenseGuildName, aName = merged.AttackGuildName;
             let dp = 0, ap = 0;
 
             if (isLive) {
@@ -197,21 +201,15 @@
                 if (wsInfo.state === 2 || wsInfo.state === 3) [dName, aName] = [aName, dName];
             }
 
-            // 状態判定
             let status = "確定", sClass = "s-defense";
-            const hasFallen = (log.FallenTime && log.FallenTime !== "-");
-            const hasAttack = (aName !== "-" && aName !== "未所属") || (log.AttackTime && log.AttackTime !== "-");
-            const hasCounter = (log.CounterTime && log.CounterTime !== "-");
+            const hasFallen = (merged.FallenTime !== "-");
+            const hasAttack = (aName !== "-" && aName !== "未所属") || (merged.AttackTime !== "-");
+            const hasCounter = (merged.CounterTime !== "-");
 
-            if (hasCounter) { 
-                status = "宣戦"; sClass = "s-battle"; 
-            } else if (hasFallen) { 
-                status = "陥落"; sClass = "s-fallen"; 
-            } else if (hasAttack) { 
-                status = "宣戦"; sClass = "s-battle"; 
-            }
+            if (hasCounter) { status = "宣戦"; sClass = "s-battle"; }
+            else if (hasFallen) { status = "陥落"; sClass = "s-fallen"; }
+            else if (hasAttack) { status = "宣戦"; sClass = "s-battle"; }
 
-            // 時刻が必ず表示されることを保証
             html += `<tr>
                 <td style="color:var(--accent)">${i}</td>
                 <td><strong>${castleNames[i] || '拠点'+i}</strong></td>
@@ -219,10 +217,10 @@
                 <td><span class="c-defense">${dp}</span> / <span class="c-attack">${ap}</span></td>
                 <td class="c-attack">${aName}</td>
                 <td><span class="badge ${sClass}">${status}</span></td>
-                <td class="time-cell">${log.DefenseTime || "-"}</td>
-                <td class="time-cell">${log.AttackTime || "-"}</td>
-                <td class="time-cell">${log.FallenTime || "-"}</td>
-                <td class="time-cell">${log.CounterTime || "-"}</td>
+                <td class="time-cell">${merged.DefenseTime}</td>
+                <td class="time-cell">${merged.AttackTime}</td>
+                <td class="time-cell">${merged.FallenTime}</td>
+                <td class="time-cell">${merged.CounterTime}</td>
             </tr>`;
             combined.push({name: dName, pt: dp});
         }
