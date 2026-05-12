@@ -20,7 +20,6 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 13px; min-height: 100vh; }
         
-        /* 画面上部の固定メニュー */
         header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 16px; position: relative; z-index: 101; }
         .sticky-nav { position: sticky; top: 0; z-index: 100; background: var(--bg); }
 
@@ -50,15 +49,15 @@
         .day-tab.active { border-color: var(--accent); color: var(--accent); background: #1a2030; }
 
         .guild-summary { background: var(--surface2); border-bottom: 1px solid var(--border); padding: 6px 16px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-height: 40px; }
-        .summary-label { font-size: 10px; font-weight: bold; color: var(--muted); background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 3px; border: 1px solid var(--border2); }
+        .summary-label { font-size: 10px; font-weight: bold; color: var(--text); padding: 4px 0; border: none; }
         .guild-chip { background: rgba(255,255,255,0.05); border: 1px solid var(--border); padding: 3px 10px; border-radius: 3px; font-size: 11px; font-family: var(--mono); }
         .guild-chip b { color: var(--defense); margin-left: 6px; }
 
         .main { padding: 10px; }
         #tableContainer { width: 100%; overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; }
         
-        /* テーブルの幅固定 */
-        table { width: 100%; border-collapse: separate; border-spacing: 0; font-family: var(--mono); font-size: 12px; min-width: 1120px; table-layout: fixed; }
+        /* テーブル設定：幅を調整 */
+        table { width: 100%; border-collapse: separate; border-spacing: 0; font-family: var(--mono); font-size: 12px; min-width: 1000px; table-layout: fixed; }
         thead th { background: var(--surface2); padding: 12px 6px; text-align: left; color: var(--muted); position: sticky; top: 0; border-bottom: 1px solid var(--border); z-index: 2; overflow: hidden; white-space: nowrap; }
         tbody td { padding: 10px 6px; border-bottom: 1px solid var(--border2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
@@ -76,7 +75,6 @@
         .s-fallen { background: rgba(249, 115, 22, 0.15); color: var(--fallen); border: 1px solid var(--fallen); }
 
         @media (min-width: 768px) {
-            /* MODEを削除した分、6列のグリッドに変更してレイアウトを最適化 */
             .controls { grid-template-columns: 1fr 1fr 1fr 2fr 1fr 1fr; align-items: flex-end; }
             .world-row, .btn-group { grid-column: auto; margin-top: 0; }
         }
@@ -106,7 +104,7 @@
         </div>
         <div class="status-info"><span id="updateStatus" style="color:var(--accent)">READY</span> | <span id="clock">00:00:00</span></div>
     </div>
-    <div class="guild-summary" id="guildSummary"><div class="summary-label">防衛パーティ数</div></div>
+    <div class="guild-summary" id="guildSummary"><div class="summary-label">🏰 防衛パーティ数</div></div>
 </div>
 
 <div class="main"><div id="tableContainer"></div></div>
@@ -141,12 +139,10 @@
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     let currentDay = dayNames[new Date().getDay()] === 'Mon' ? 'Sat' : dayNames[new Date().getDay()];
 
-    // WebSocket用の変数
     let ws = null;
     let wsGuildData = {};
     let wsCastleData = [];
 
-    // 暗号解読用関数
     const parseHeader = (v, offset) => {
         let a = v.getUint32(offset, true);
         return { value: { WorldId: a >>> 19, GroupId: (a >>> 8) & 255, Class: (a >>> 16) & 7, Block: (a >>> 5) & 7, CastleId: a & 31 }, offset: offset + 4 };
@@ -165,7 +161,6 @@
         }, offset: offset + 20 };
     };
 
-    // 拠点名の取得
     async function fetchCastleNames() {
         try {
             const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(CASTLE_API + '?_t=' + Date.now())}`);
@@ -178,7 +173,6 @@
         } catch (e) { console.warn("Castle names fetch skipped."); }
     }
 
-    // データを取得して合体させる
     async function updateData() {
         const group = document.getElementById('groupManual').value || document.getElementById('groupSelect').value;
         const classId = document.getElementById('classSelect').value;
@@ -187,11 +181,7 @@
         if (!group) return;
 
         statusEl.textContent = "FETCHING...";
-        
-        const params = new URLSearchParams({
-            Group: group, Class: classId, Block: blockId, Week: currentDay, _t: Date.now()
-        });
-
+        const params = new URLSearchParams({ Group: group, Class: classId, Block: blockId, Week: currentDay, _t: Date.now() });
         let logDataArray = [];
         
         try {
@@ -200,18 +190,14 @@
                 const json = await res.json();
                 logDataArray = json.data?.Log || [];
             }
-        } catch (e) {
-            console.warn("Log API fallback");
-        }
+        } catch (e) { console.warn("Log API fallback"); }
 
         try {
             if (ws) ws.close();
             wsGuildData = {};
             wsCastleData = [];
-
             ws = new WebSocket("wss://api.mentemori.icu/gvg");
             ws.binaryType = "arraybuffer";
-
             ws.onopen = () => {
                 let buffer = new ArrayBuffer(4);
                 let view = new DataView(buffer);
@@ -219,7 +205,6 @@
                 view.setUint32(0, requestVal, true);
                 ws.send(buffer);
             };
-
             ws.onmessage = (event) => {
                 let v = new DataView(event.data);
                 let offset = 0;
@@ -227,9 +212,7 @@
                     let header = parseHeader(v, offset);
                     let stream = header.value;
                     offset = header.offset;
-
                     if(stream.GroupId != group || stream.Class != classId || stream.Block != blockId) break;
-
                     if (stream.CastleId === 0) {
                         let guild = parseGuild(v, offset, stream.WorldId);
                         offset = guild.offset;
@@ -238,50 +221,36 @@
                         let castle = parseCastle(v, offset);
                         offset = castle.offset;
                         wsCastleData[stream.CastleId] = castle.value;
-                    } else {
-                        break;
-                    }
+                    } else { break; }
                 }
                 combineAndRender(logDataArray);
             };
-            
             statusEl.textContent = "OK (" + currentDay + "): " + new Date().toLocaleTimeString();
-        } catch (e) { 
-            statusEl.textContent = "WS ERROR"; 
-        }
+        } catch (e) { statusEl.textContent = "WS ERROR"; }
     }
 
-    // データ合体・テーブル描画
     function combineAndRender(logDataArray) {
         let combinedData = [];
-        
         for (let i = 1; i <= 21; i++) {
             let logInfo = logDataArray.find(d => String(d.CastleID) === String(i)) || {};
             let wsInfo = wsCastleData[i] || {};
-
             let dGuildName = wsGuildData[wsInfo.GuildId] || "-";
             let aGuildName = wsGuildData[wsInfo.AttackerGuildId] || "-";
-            
             if (wsInfo.GvgCastleState == 2 || wsInfo.GvgCastleState == 3) {
                 let temp = dGuildName; dGuildName = aGuildName; aGuildName = temp;
             }
-
             combinedData.push({
-                CastleID: i,
-                DefenseGuildName: dGuildName,
-                AttackGuildName: aGuildName,
-                DefensePartyCount: wsInfo.DefensePartyCount || 0,
-                AttackPartyCount: wsInfo.AttackPartyCount || 0,
-                DefenseTime: logInfo.DefenseTime || "-",
-                AttackTime: logInfo.AttackTime || "-",
-                FallenTime: logInfo.FallenTime || "-",
-                CounterTime: logInfo.CounterTime || "-"
+                CastleID: i, DefenseGuildName: dGuildName, AttackGuildName: aGuildName,
+                DefensePartyCount: wsInfo.DefensePartyCount || 0, AttackPartyCount: wsInfo.AttackPartyCount || 0,
+                DefenseTime: logInfo.DefenseTime || "-", AttackTime: logInfo.AttackTime || "-",
+                FallenTime: logInfo.FallenTime || "-", CounterTime: logInfo.CounterTime || "-"
             });
         }
 
         let html = `<table>
             <colgroup>
-                <col style="width: 40px;">   <col style="width: 120px;">  <col style="width: 150px;">  <col style="width: 110px;">  <col style="width: 150px;">  <col style="width: 60px;">   <col style="width: 120px;">  <col style="width: 120px;">  <col style="width: 120px;">  <col style="width: 120px;">  </colgroup>
+                <col style="width: 40px;">   <col style="width: 110px;">  <col style="width: 130px;">  <col style="width: 100px;">  <col style="width: 130px;">  <col style="width: 60px;">   <col style="width: 110px;">  <col style="width: 110px;">  <col style="width: 110px;">  <col style="width: 110px;">
+            </colgroup>
             <thead><tr>
             <th>ID</th><th>拠点名</th><th class="c-defense">防衛ギルド</th><th style="text-align:center;">防衛/侵攻PT</th><th class="c-attack">侵攻ギルド</th><th>状態</th>
             <th class="c-defense">防衛開始</th><th class="c-attack">攻撃開始</th><th class="c-fallen">陥落時刻</th><th class="c-counter">反撃時刻</th>
@@ -290,13 +259,9 @@
         combinedData.sort((a, b) => a.CastleID - b.CastleID).forEach(row => {
             const id = String(row.CastleID);
             const cName = castleNames[id] || `拠点 ${id}`;
-            
             let label = '確定', sClass = 's-defense';
-            if (row.FallenTime !== "-") { 
-                label = '陥落'; sClass = 's-fallen'; 
-            } else if (row.AttackTime !== "-" || (row.AttackGuildName !== "-")) { 
-                label = '宣戦'; sClass = 's-battle'; 
-            }
+            if (row.FallenTime !== "-") { label = '陥落'; sClass = 's-fallen'; 
+            } else if (row.AttackTime !== "-" || (row.AttackGuildName !== "-")) { label = '宣戦'; sClass = 's-battle'; }
 
             html += `<tr>
                 <td style="color:var(--accent); font-weight:bold; text-align:center;">${id}</td>
@@ -327,7 +292,7 @@
             }
         });
         const sorted = Object.entries(summary).sort((a,b) => b[1] - a[1]);
-        document.getElementById('guildSummary').innerHTML = `<div class="summary-label">防衛パーティ数</div>` + 
+        document.getElementById('guildSummary').innerHTML = `<div class="summary-label">🏰 防衛パーティ数</div>` + 
             sorted.map(([n, c]) => `<div class="guild-chip">${n}<b>${c}P</b></div>`).join('');
     }
 
@@ -347,36 +312,22 @@
     function setupGroupSelect() {
         const groupSelect = document.getElementById('groupSelect');
         const display = document.getElementById('selectedWorldDisplay');
-        
         const defaultOpt = document.createElement('option');
         defaultOpt.value = ""; defaultOpt.textContent = "選択してください";
         groupSelect.appendChild(defaultOpt);
-
         Object.keys(GROUP_DATA).sort((a,b) => a-b).forEach(id => {
-            const opt = document.createElement('option'); 
-            opt.value = id; 
-            opt.textContent = `${id} [${GROUP_DATA[id]}]`;
+            const opt = document.createElement('option'); opt.value = id; opt.textContent = `${id} [${GROUP_DATA[id]}]`;
             groupSelect.appendChild(opt);
         });
-
         groupSelect.addEventListener('change', () => {
-            if (groupSelect.value) {
-                display.textContent = `World: ${GROUP_DATA[groupSelect.value]}`;
-                updateData();
-            } else {
-                display.textContent = "Select...";
-            }
+            if (groupSelect.value) { display.textContent = `World: ${GROUP_DATA[groupSelect.value]}`; updateData(); }
+            else { display.textContent = "Select..."; }
         });
     }
 
     document.getElementById('autoBtn').addEventListener('click', updateData);
     setInterval(() => { document.getElementById('clock').textContent = new Date().toLocaleTimeString(); }, 1000);
-    
-    async function init() { 
-        setupDayTabs();
-        setupGroupSelect();
-        await fetchCastleNames(); 
-    }
+    async function init() { setupDayTabs(); setupGroupSelect(); await fetchCastleNames(); }
     init();
 </script>
 </body>
