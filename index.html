@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>▶ GRAND WAR MONITOR / FULL LOG</title>
+    <title>▶ GRAND WAR MONITOR / FIXED</title>
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -50,6 +50,7 @@
         .s-defense { background: rgba(34, 197, 94, 0.15); color: var(--defense); border: 1px solid var(--defense); }
         .s-battle { background: rgba(234, 179, 8, 0.15); color: var(--battle); border: 1px solid var(--battle); }
         .s-fallen { background: rgba(249, 115, 22, 0.15); color: var(--fallen); border: 1px solid var(--fallen); }
+        .s-counter { background: rgba(168, 85, 247, 0.15); color: var(--counter); border: 1px solid var(--counter); }
     </style>
 </head>
 <body>
@@ -60,11 +61,11 @@
         <div class="ctrl-group"><label>GROUP</label><select id="groupSelect"></select></div>
         <div class="ctrl-group"><label>CLASS</label><select id="classSelect"><option value="3" selected>G-Master</option><option value="2">Expert</option><option value="1">Elite</option></select></div>
         <div class="ctrl-group"><label>BLOCK</label><select id="blockSelect"><option value="0">A</option><option value="1" selected>B</option><option value="2">C</option><option value="3">D</option></select></div>
-        <div class="world-row"><label>WORLD INFO</label><div id="selectedWorldDisplay" class="world-info">Selecting...</div></div>
+        <div class="world-row"><label>WORLD INFO</label><div id="selectedWorldDisplay" class="world-info">Loading...</div></div>
         <div class="ctrl-group"><label>ID MANUAL</label><input type="number" id="groupManual" placeholder="ID"></div>
         <div class="btn-group">
             <button id="autoBtn">FETCH DATA</button>
-            <button class="reset-btn" onclick="location.reload()">RELOAD</button>
+            <button id="resetLogBtn" class="reset-btn" onclick="location.reload()">RELOAD</button>
         </div>
     </div>
 </header>
@@ -169,11 +170,15 @@
         let combined = [];
 
         for (let i = 1; i <= 21; i++) {
-            // 【修正】その拠点の全ログから、一番重要なもの（陥落あり ＞ 攻撃あり ＞ 防衛のみ）を抽出
+            // 【修正点①】その拠点の全ログから、一番重要なデータ（陥落 > 攻撃 > 防衛）を優先して抽出
             const castleLogs = logData.filter(d => String(d.CastleID) === String(i) && d.Week === currentDay);
             const log = castleLogs.sort((a, b) => {
-                const score = (x) => (x.FallenTime && x.FallenTime !== "-" ? 3 : (x.AttackTime && x.AttackTime !== "-" ? 2 : 1));
-                return score(b) - score(a);
+                const getScore = (x) => {
+                    if (x.FallenTime && x.FallenTime !== "-") return 3;
+                    if (x.AttackTime && x.AttackTime !== "-") return 2;
+                    return 1;
+                };
+                return getScore(b) - getScore(a);
             })[0] || {};
 
             const wsInfo = wsCastleData[i] || {};
@@ -189,13 +194,19 @@
                 if (wsInfo.state === 2 || wsInfo.state === 3) [dName, aName] = [aName, dName];
             }
 
-            // 【判定強化】陥落時刻が入っていれば「陥落」
+            // 【修正点②】状態判定ロジックの強化
             let status = "確定", sClass = "s-defense";
-            const hasFallen = (log.FallenTime && log.FallenTime !== "-" && log.FallenTime !== "");
-            const hasAttack = (aName !== "-" && aName !== "" && aName !== "未所属") || (log.AttackTime && log.AttackTime !== "-" && log.AttackTime !== "");
+            const hasFallen = (log.FallenTime && log.FallenTime !== "-");
+            const hasAttack = (aName !== "-" && aName !== "未所属") || (log.AttackTime && log.AttackTime !== "-");
+            const hasCounter = (log.CounterTime && log.CounterTime !== "-");
 
-            if (hasFallen) { status = "陥落"; sClass = "s-fallen"; }
-            else if (hasAttack) { status = "宣戦"; sClass = "s-battle"; }
+            if (hasCounter) {
+                status = "反撃中"; sClass = "s-battle"; 
+            } else if (hasFallen) { 
+                status = "陥落"; sClass = "s-fallen"; 
+            } else if (hasAttack) { 
+                status = "宣戦"; sClass = "s-battle"; 
+            }
 
             html += `<tr>
                 <td style="color:var(--accent)">${i}</td>
