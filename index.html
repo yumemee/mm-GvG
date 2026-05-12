@@ -162,17 +162,26 @@
         };
     }
 
-    // --- 【ダブルチェック済み】時刻表示 & 反撃判定ロジック ---
     function renderTable(logData, isLive) {
-        let html = `<table><thead><tr><th>ID</th><th>拠点</th><th>防衛ギルド</th><th>PT</th><th>攻撃ギルド</th><th>状態</th><th>防衛開始</th><th>攻撃開始</th><th>陥落</th><th>反撃</th></tr></thead><tbody>`;
+        let html = `<table><thead><tr><th>ID</th><th>拠点</th><th>防衛ギルド</th><th>防衛pt/侵攻pt</th><th>攻撃ギルド</th><th>状態</th><th>防衛開始</th><th>攻撃開始</th><th>陥落</th><th>反撃</th></tr></thead><tbody>`;
         let combined = [];
 
         for (let i = 1; i <= 21; i++) {
-            // ログからその拠点の最新情報を取得
+            // 【絶対条件：時刻表示の修正】
+            // 該当拠点の全ログから、時刻データ（Defense/Attack/Fallen/Counter）のいずれかが入っているものを抽出
             const castleLogs = logData.filter(d => String(d.CastleID) === String(i) && d.Week === currentDay);
+            
+            // 最も「中身が詰まっている」ログを探すスコアリング
             const log = castleLogs.sort((a, b) => {
-                const score = (x) => (x.FallenTime && x.FallenTime !== "-" ? 3 : (x.AttackTime && x.AttackTime !== "-" ? 2 : 1));
-                return score(b) - score(a);
+                const getScore = (x) => {
+                    let s = 0;
+                    if (x.CounterTime && x.CounterTime !== "-") s += 100;
+                    if (x.FallenTime && x.FallenTime !== "-") s += 50;
+                    if (x.AttackTime && x.AttackTime !== "-") s += 10;
+                    if (x.DefenseTime && x.DefenseTime !== "-") s += 1;
+                    return s;
+                };
+                return getScore(b) - getScore(a);
             })[0] || {};
 
             const wsInfo = wsCastleData[i] || {};
@@ -202,7 +211,7 @@
                 status = "宣戦"; sClass = "s-battle"; 
             }
 
-            // 時刻が必ず表示されるよう || "-" を設定
+            // 時刻が必ず表示されることを保証
             html += `<tr>
                 <td style="color:var(--accent)">${i}</td>
                 <td><strong>${castleNames[i] || '拠点'+i}</strong></td>
