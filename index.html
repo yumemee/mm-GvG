@@ -55,7 +55,7 @@
 
         .main { padding: 10px; }
         #tableContainer { width: 100%; overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; }
-        table { width: 100%; border-collapse: separate; border-spacing: 0; font-family: var(--mono); font-size: 12px; min-width: 1100px; }
+        table { width: 100%; border-collapse: separate; border-spacing: 0; font-family: var(--mono); font-size: 12px; min-width: 1150px; }
         thead th { background: var(--surface2); padding: 12px 10px; text-align: left; color: var(--muted); position: sticky; top: 0; border-bottom: 1px solid var(--border); z-index: 2; }
         tbody td { padding: 10px; border-bottom: 1px solid var(--border2); white-space: nowrap; }
 
@@ -84,7 +84,6 @@
 <header>
     <h1>▶ GRAND WAR MONITOR [GLOBAL]</h1>
     <div class="controls">
-        <!-- MODEをGlobalに固定 -->
         <div class="ctrl-group"><label>MODE</label><select id="modeSelect" disabled><option value="global" selected>Global</option></select></div>
         <div class="ctrl-group"><label>GROUP</label><select id="groupSelect"></select></div>
         <div class="ctrl-group"><label>CLASS</label><select id="classSelect"><option value="3" selected>G-Master</option><option value="2">Expert</option><option value="1">Elite</option></select></div>
@@ -114,7 +113,6 @@
     const BASE_LOG_API = 'https://api.tamamo.dev/GvGLog';
     const CASTLE_API = 'https://tamamo.dev/assets/Resource/CastleId.json';
     
-    // 指定されたGlobalGvGの拠点名/IDマッピング
     const GLOBAL_CASTLE_MAP = {
         "1": "アイン", "2": "イエソド", "3": "マルクト", "4": "ケテル", "5": "テファレト",
         "6": "クシェル", "7": "シトリ", "8": "トパズ", "9": "メラル", "10": "ペリド",
@@ -124,6 +122,7 @@
     };
 
     const GROUP_DATA = { 
+        18: "W85, W89, W93, W97", 19: "W101, W105, W109, W113", 20: "W104, W108, W112, W116", 21: "W117, W121, W125, W129",
         140: "W149-152", 141: "W1, W7, W12, W19", 142: "W2, W8, W20, W27", 143: "W3, W4, W13, W31", 144: "W5, W9, W21, W30", 
         145: "W6, W14, W15, W32", 146: "W10, W18, W24, W29", 147: "W11, W17, W22, W26", 148: "W16, W23, W25, W28", 
         149: "W33, W54, W60, W63", 150: "W34, W43, W51, W61", 151: "W35, W44, W48, W53", 152: "W36, W38, W47, W64", 
@@ -136,28 +135,24 @@
         177: "W136, W140, W141, W146", 178: "W153, W154, W155, W156", 179: "W157, W158, W159, W160", 180: "W161-W164"
     };
 
-    let castleNames = { ...GLOBAL_CASTLE_MAP }; // 初期状態でGlobalのIDをセット
+    let castleNames = { ...GLOBAL_CASTLE_MAP };
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     let currentDay = dayNames[new Date().getDay()] === 'Mon' ? 'Sat' : dayNames[new Date().getDay()];
 
     async function fetchCastleNames() {
         try {
-            // APIから最新情報を取得を試みる（CORSプロキシ経由）
             const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(CASTLE_API + '?_t=' + Date.now())}`);
             const data = await res.json();
             
-            // globalGvGセクションが存在すればそれを優先してマッピング
             if (data.globalGvG) {
                 Object.entries(data.globalGvG).forEach(([name, id]) => {
                     castleNames[String(id)] = name;
                 });
             } else if (Array.isArray(data)) {
-                // 配列形式の場合のフォールバック
                 data.forEach(item => { castleNames[String(item.id)] = item.name; });
             }
         } catch (e) { 
             console.error("Castle names fetch error, using fallback map."); 
-            // 失敗時は初期化した GLOBAL_CASTLE_MAP をそのまま使用
         }
     }
 
@@ -180,7 +175,6 @@
             const json = await res.json();
             const logData = json.data?.Log || [];
 
-            // 描画実行
             renderTable(logData);
             updateGuildSummary(logData);
             statusEl.textContent = "OK (" + currentDay + "): " + new Date().toLocaleTimeString();
@@ -188,35 +182,42 @@
     }
 
     function renderTable(data) {
+        // ★修正点1：テーブルのヘッダーに「防衛PT数」の列（th）を追加しました。
         let html = `<table><thead><tr>
-            <th>ID</th><th>拠点名</th><th class="c-defense">防衛ギルド</th><th class="c-attack">侵攻ギルド</th><th>状態</th>
+            <th>ID</th><th>拠点名</th><th class="c-defense">防衛ギルド</th><th class="c-defense" style="text-align:center;">防衛PT数</th><th class="c-attack">侵攻ギルド</th><th>状態</th>
             <th class="c-defense">防衛開始</th><th class="c-attack">攻撃開始</th><th class="c-fallen">陥落時刻</th><th class="c-counter">反撃時刻</th>
         </tr></thead><tbody>`;
 
-        // ID順にソートして表示
-        data.sort((a, b) => a.CastleID - b.CastleID).forEach(row => {
-            const id = String(row.CastleID);
-            const dGuild = row.DefenseGuildName || row.defenseGuildName || "-";
-            const aGuild = row.AttackGuildName || row.attackGuildName || "-";
+        // ★修正点2：IDのプロパティ名のブレも吸収するようにしました。
+        data.sort((a, b) => (a.CastleID || a.castleId || a.castleID) - (b.CastleID || b.castleId || b.castleID)).forEach(row => {
+            const id = String(row.CastleID || row.castleId || row.castleID);
+            
+            // ★修正点3：APIのキー名が多少違っても対応できるように複数の候補を記述しました。
+            const dGuild = row.DefenseGuildName || row.defenseGuildName || row.DefenseGuild || row.defenseGuild || "-";
+            const aGuild = row.AttackGuildName || row.attackGuildName || row.AttackGuild || row.attackGuild || "-";
+            const dParty = row.DefensePartyCount || row.defensePartyCount || row.PartyCount || row.partyCount || "0";
+            
             const cName = castleNames[id] || `拠点 ${id}`;
             
             let label = '確定', sClass = 's-defense';
-            if (row.FallenTime) { 
+            if (row.FallenTime || row.fallenTime) { 
                 label = '陥落'; sClass = 's-fallen'; 
-            } else if (row.AttackTime || (aGuild !== "-")) { 
+            } else if (row.AttackTime || row.attackTime || (aGuild !== "-")) { 
                 label = '宣戦'; sClass = 's-battle'; 
             }
 
+            // ★修正点4：「防衛PT数（dParty）」を表示するセル（td）を追加しました。
             html += `<tr>
                 <td style="color:var(--accent); font-weight:bold;">${id}</td>
                 <td><strong>${cName}</strong></td>
                 <td class="c-defense">${dGuild}</td>
+                <td class="c-defense" style="text-align:center;"><strong>${dParty}</strong></td>
                 <td class="c-attack">${aGuild}</td>
                 <td><span class="badge ${sClass}">${label}</span></td>
-                <td class="time-cell c-defense">${row.DefenseTime || '-'}</td>
-                <td class="time-cell c-attack">${row.AttackTime || '-'}</td>
-                <td class="time-cell c-fallen">${row.FallenTime || '-'}</td>
-                <td class="time-cell c-counter">${row.CounterTime || '-'}</td>
+                <td class="time-cell c-defense">${row.DefenseTime || row.defenseTime || '-'}</td>
+                <td class="time-cell c-attack">${row.AttackTime || row.attackTime || '-'}</td>
+                <td class="time-cell c-fallen">${row.FallenTime || row.fallenTime || '-'}</td>
+                <td class="time-cell c-counter">${row.CounterTime || row.counterTime || '-'}</td>
             </tr>`;
         });
         document.getElementById('tableContainer').innerHTML = html + `</tbody></table>`;
@@ -225,10 +226,11 @@
     function updateGuildSummary(data) {
         const summary = {};
         data.forEach(row => {
-            const name = row.DefenseGuildName || row.defenseGuildName;
+            // ★サマリー部分も同様に複数候補に対応
+            const name = row.DefenseGuildName || row.defenseGuildName || row.DefenseGuild || row.defenseGuild;
             if (name && name !== "-") {
-                const count = row.DefensePartyCount || 0;
-                summary[name] = (summary[name] || 0) + count;
+                const count = row.DefensePartyCount || row.defensePartyCount || row.PartyCount || row.partyCount || 0;
+                summary[name] = (summary[name] || 0) + Number(count);
             }
         });
         const sorted = Object.entries(summary).sort((a,b) => b[1] - a[1]);
@@ -253,7 +255,6 @@
         const groupSelect = document.getElementById('groupSelect');
         const display = document.getElementById('selectedWorldDisplay');
         
-        // デフォルトの空オプション
         const defaultOpt = document.createElement('option');
         defaultOpt.value = ""; defaultOpt.textContent = "選択してください";
         groupSelect.appendChild(defaultOpt);
@@ -281,8 +282,7 @@
     async function init() { 
         setupDayTabs();
         setupGroupSelect();
-        await fetchCastleNames(); // 拠点名マッピングをロード
-        // 初期データが必要な場合はここにupdateData()を追加
+        await fetchCastleNames(); 
     }
     init();
 </script>
