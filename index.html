@@ -236,73 +236,73 @@
 
         isFetching = true;
         statusEl.textContent = "CONNECTING...";
-        statusEl.style.color = "var(--accent)";
         
         const gClass = document.getElementById('classSelect').value;
         const block = document.getElementById('blockSelect').value;
-        
-        // パラメータを構築
         const params = { Group: group, Class: gClass, Block: block, Week: currentDay };
         const url = getApiUrl(BASE_LOG_API, params);
 
         try {
-            // mode: 'cors' を明示的に指定して通信
-            const res = await fetch(url, { 
-                mode: 'cors',
-                headers: { 'Accept': 'application/json' }
-            });
-
+            const res = await fetch(url);
             if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
             
-            const data = await res.json();
+            const json = await res.json();
+            // APIの構造に合わせて Log 部分を抽出
+            const logData = json.data && json.data.Log ? json.data.Log : [];
             
-            if (!data || data.length === 0) {
-                statusEl.textContent = "データなし (ID/曜日を確認)";
-                statusEl.style.color = "#f97316";
-                document.getElementById('tableContainer').innerHTML = "<p style='text-align:center; padding:40px; color:var(--muted);'>選択された条件のデータは存在しません。</p>";
+            if (logData.length === 0) {
+                statusEl.textContent = "データなし";
+                document.getElementById('tableContainer').innerHTML = "<p style='text-align:center; padding:40px; color:var(--muted);'>データが存在しません。</p>";
                 return;
             }
 
-            processHistory(data);
-            updateGuildSummary(data);
-            renderTable(data);
+            processHistory(logData);
+            // ギルド名が取得できない構造なのでサマリーは一旦クリア
+            document.getElementById('guildSummary').innerHTML = ""; 
+            renderTable(logData);
+            
             statusEl.textContent = `OK: ${new Date().toLocaleTimeString()}`;
             statusEl.style.color = "var(--defense)";
 
         } catch (e) {
-            console.error("Fetch Error:", e);
-            statusEl.textContent = "通信失敗: 制限を確認してください";
-            statusEl.style.color = "#ef4444";
-            alert("通信に失敗しました。\n\n原因の可能性があります：\n1. ブラウザが外部接続をブロックしている\n2. LINEなどのアプリ内ブラウザを使用している\n3. ネット環境が不安定\n\nブラウザの設定で『安全でないコンテンツを許可』するか、Chrome/Safariで開き直してください。");
+            console.error(e);
+            statusEl.textContent = "通信失敗";
         } finally { 
             isFetching = false; 
         }
     }
 
     function processHistory(data) {
-        const now = new Date().toLocaleTimeString('ja-JP', { hour12: false });
-        let historyLog = getHistory();
-        data.forEach(row => {
-            const id = row.CastleId;
-            if (!historyLog[id]) historyLog[id] = { attack: '-', defense: '-', counter: '-', fallen: '-' };
-            if (row.AttackPartyCount > 0 && row.State === 1 && historyLog[id].attack === '-') historyLog[id].attack = now;
-            if (row.DefensePartyCount > 0 && historyLog[id].defense === '-') historyLog[id].defense = now;
-            if (row.State === 3 && historyLog[id].counter === '-') historyLog[id].counter = now;
-            if (row.State === 2 && historyLog[id].fallen === '-') historyLog[id].fallen = now;
-        });
-        saveHistory(historyLog);
     }
 
-    function renderTable(data) {
-        let html = `<table><thead><tr><th>ID</th><th>拠点</th><th>所有ギルド</th><th>攻撃ギルド</th><th>状態</th><th>P(防/攻)</th><th style="color:var(--attack)">侵攻開始</th><th style="color:var(--defense)">防衛開始</th><th style="color:var(--battle)">反撃開始</th><th style="color:var(--fallen)">陥落時刻</th></tr></thead><tbody>`;
-        const historyLog = getHistory();
-        data.sort((a, b) => a.CastleId - b.CastleId).forEach(row => {
-            const id = row.CastleId;
-            const log = historyLog[id] || { attack: '-', defense: '-', counter: '-', fallen: '-' };
-            const attacker = row.AttackerGuildName && row.AttackerGuildName.trim() !== "" ? row.AttackerGuildName : "-";
-            let label = {1:'宣戦', 2:'陥落', 3:'反撃', 4:'安定'}[row.State] || '安定', sClass = {1:'s-battle', 2:'s-fallen', 3:'s-battle', 4:'s-defense'}[row.State] || 's-defense';
-            if (attacker === "-") { label = "確定"; sClass = "s-defense"; }
-            html += `<tr><td style="color:var(--accent); font-weight:bold;">${id}</td><td><strong>${castleNames[id] || 'Castle '+id}</strong></td><td>${row.GuildName || '-'}</td><td>${attacker}</td><td><span class="badge ${sClass}">${label}</span></td><td><span style="color:var(--defense)">${row.DefensePartyCount}</span> / <span style="color:var(--attack)">${row.AttackPartyCount}</span></td><td class="time-cell">${log.attack}</td><td class="time-cell">${log.defense}</td><td class="time-cell">${log.counter}</td><td class="time-cell" style="color:var(--fallen)">${log.fallen}</td></tr>`;
+function renderTable(data) {
+        let html = `<table><thead><tr>
+            <th>ID</th>
+            <th>拠点</th>
+            <th>状態</th>
+            <th style="color:var(--defense)">防衛開始</th>
+            <th style="color:var(--attack)">攻撃開始</th>
+            <th style="color:var(--fallen)">陥落時刻</th>
+            <th style="color:var(--battle)">反撃時刻</th>
+        </tr></thead><tbody>`;
+
+        data.sort((a, b) => a.CastleID - b.CastleID).forEach(row => {
+            const id = row.CastleID;
+            // 状態の判定
+            let label = '確定', sClass = 's-defense';
+            if (row.FallenTime) { label = '陥落'; sClass = 's-fallen'; }
+            else if (row.AttackTime) { label = '宣戦'; sClass = 's-battle'; }
+            else if (row.DefenseTime) { label = '防衛'; sClass = 's-defense'; }
+
+            html += `<tr>
+                <td style="color:var(--accent); font-weight:bold;">${id}</td>
+                <td><strong>${castleNames[id] || 'Castle '+id}</strong></td>
+                <td><span class="badge ${sClass}">${label}</span></td>
+                <td class="time-cell">${row.DefenseTime || '-'}</td>
+                <td class="time-cell">${row.AttackTime || '-'}</td>
+                <td class="time-cell" style="color:var(--fallen)">${row.FallenTime || '-'}</td>
+                <td class="time-cell">${row.CounterTime || '-'}</td>
+            </tr>`;
         });
         document.getElementById('tableContainer').innerHTML = html + `</tbody></table>`;
     }
