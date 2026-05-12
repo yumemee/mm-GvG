@@ -162,77 +162,81 @@
         };
     }
 
-function renderTable(logData, isLive) {
-    let html = `<table><thead><tr><th>ID</th><th>拠点</th><th>防衛ギルド</th><th>PT</th><th>攻撃ギルド</th><th>状態</th><th>防衛開始</th><th>攻撃開始</th><th>陥落</th><th>反撃</th></tr></thead><tbody>`;
-    let combined = [];
+    // --- ここからが修正された統合ロジック ---
+    function renderTable(logData, isLive) {
+        let html = `<table><thead><tr><th>ID</th><th>拠点</th><th>防衛ギルド</th><th>PT</th><th>攻撃ギルド</th><th>状態</th><th>防衛開始</th><th>攻撃開始</th><th>陥落</th><th>反撃</th></tr></thead><tbody>`;
+        let combined = [];
 
-    for (let i = 1; i <= 21; i++) {
-        // 当該拠点のログを抽出
-        const castleLogs = logData.filter(d => String(d.CastleID) === String(i));
-        
-        let merged = {
-            dName: "-", aName: "-",
-            dTime: "-", aTime: "-", fTime: "-", cTime: "-"
-        };
+        for (let i = 1; i <= 21; i++) {
+            // ID（時間順）でソートして全件取得
+            const castleLogs = logData
+                .filter(d => String(d.CastleID) === String(i))
+                .sort((a, b) => (a.ID || 0) - (b.ID || 0));
+            
+            let merged = {
+                dName: "-", aName: "-",
+                dTime: "-", aTime: "-", fTime: "-", cTime: "-"
+            };
 
-        castleLogs.forEach(entry => {
-            // 【修正の肝】null または "-" 以外の場合のみ、値を更新する
-            const isValid = (val) => val !== null && val !== undefined && val !== "-";
+            // 各行をスキャンしてnull以外の値をマージ
+            castleLogs.forEach(entry => {
+                const hasValue = (v) => v !== null && v !== undefined && v !== "-" && v !== "";
 
-            if (isValid(entry.DefenseTime)) merged.dTime = entry.DefenseTime;
-            if (isValid(entry.AttackTime))  merged.aTime = entry.AttackTime;
-            if (isValid(entry.FallenTime))  merged.fTime = entry.FallenTime;
-            if (isValid(entry.CounterTime)) merged.cTime = entry.CounterTime;
+                if (hasValue(entry.DefenseTime)) merged.dTime = entry.DefenseTime;
+                if (hasValue(entry.AttackTime))  merged.aTime = entry.AttackTime;
+                if (hasValue(entry.FallenTime))  merged.fTime = entry.FallenTime;
+                if (hasValue(entry.CounterTime)) merged.cTime = entry.CounterTime;
 
-            if (isValid(entry.DefenseGuildName)) merged.dName = entry.DefenseGuildName;
-            if (isValid(entry.AttackGuildName) && entry.AttackGuildName !== "未所属") {
-                merged.aName = entry.AttackGuildName;
+                if (hasValue(entry.DefenseGuildName)) merged.dName = entry.DefenseGuildName;
+                if (hasValue(entry.AttackGuildName) && entry.AttackGuildName !== "未所属") {
+                    merged.aName = entry.AttackGuildName;
+                }
+            });
+
+            // WebSocketデータの適用
+            const wsInfo = wsCastleData[i] || {};
+            let displayD = merged.dName;
+            let displayA = merged.aName;
+            let dp = 0, ap = 0;
+
+            if (isLive && wsInfo.gid) {
+                const liveD = wsGuildData[wsInfo.gid];
+                const liveA = wsGuildData[wsInfo.agid];
+                if (liveD) displayD = liveD;
+                if (liveA) displayA = liveA;
+                dp = wsInfo.dp || 0; ap = wsInfo.ap || 0;
+                if (wsInfo.state === 2 || wsInfo.state === 3) {
+                    [displayD, displayA] = [displayA, displayD];
+                }
             }
-        });
 
-        // ライブデータ（WebSocket）がある場合は上書き
-        const wsInfo = wsCastleData[i] || {};
-        let displayD = merged.dName;
-        let displayA = merged.aName;
-        let dp = 0, ap = 0;
+            // 時刻の整形 (年/月/日を削除)
+            const cleanT = (t) => (t && t.includes(' ')) ? t.split(' ')[1] : t;
 
-        if (isLive) {
-            const liveD = wsGuildData[wsInfo.gid] || "-";
-            const liveA = wsGuildData[wsInfo.agid] || "-";
-            if (liveD !== "-") displayD = liveD;
-            if (liveA !== "-") displayA = liveA;
-            dp = wsInfo.dp || 0; ap = wsInfo.ap || 0;
-            if (wsInfo.state === 2 || wsInfo.state === 3) {
-                [displayD, displayA] = [displayA, displayD];
-            }
+            // 状態バッジ
+            let status = "確定", sClass = "s-defense";
+            if (merged.cTime !== "-") { status = "反撃"; sClass = "s-battle"; }
+            else if (merged.fTime !== "-") { status = "陥落"; sClass = "s-fallen"; }
+            else if (displayA !== "-" && displayA !== "未所属") { status = "宣戦"; sClass = "s-battle"; }
+
+            html += `<tr>
+                <td style="color:var(--accent)">${i}</td>
+                <td><strong>${castleNames[i] || '拠点'+i}</strong></td>
+                <td class="c-defense">${displayD}</td>
+                <td><span class="c-defense">${dp}</span> / <span class="c-attack">${ap}</span></td>
+                <td class="c-attack">${displayA}</td>
+                <td><span class="badge ${sClass}">${status}</span></td>
+                <td class="time-cell">${cleanT(merged.dTime)}</td>
+                <td class="time-cell">${cleanT(merged.aTime)}</td>
+                <td class="time-cell">${cleanT(merged.fTime)}</td>
+                <td class="time-cell">${cleanT(merged.cTime)}</td>
+            </tr>`;
+            combined.push({name: displayD, pt: dp});
         }
-
-        // 状態判定
-        let status = "確定", sClass = "s-defense";
-        if (merged.cTime !== "-") { status = "反撃"; sClass = "s-battle"; }
-        else if (merged.fTime !== "-") { status = "陥落"; sClass = "s-fallen"; }
-        else if (displayA !== "-" && displayA !== "未所属") { status = "宣戦"; sClass = "s-battle"; }
-
-        // 時刻文字列から年(26/)を削って見やすく加工（任意）
-        const formatTime = (t) => t.length > 10 ? t.split(' ')[1] : t;
-
-        html += `<tr>
-            <td style="color:var(--accent)">${i}</td>
-            <td><strong>${castleNames[i] || '拠点'+i}</strong></td>
-            <td class="c-defense">${displayD}</td>
-            <td><span class="c-defense">${dp}</span> / <span class="c-attack">${ap}</span></td>
-            <td class="c-attack">${displayA}</td>
-            <td><span class="badge ${sClass}">${status}</span></td>
-            <td class="time-cell">${formatTime(merged.dTime)}</td>
-            <td class="time-cell">${formatTime(merged.aTime)}</td>
-            <td class="time-cell">${formatTime(merged.fTime)}</td>
-            <td class="time-cell">${formatTime(merged.cTime)}</td>
-        </tr>`;
-        combined.push({name: displayD, pt: dp});
+        document.getElementById('tableContainer').innerHTML = html + `</tbody></table>`;
+        updateSummary(combined);
     }
-    document.getElementById('tableContainer').innerHTML = html + `</tbody></table>`;
-    updateSummary(combined);
-}
+    // --- 修正ロジックここまで ---
 
     function updateSummary(data) {
         const sum = {};
