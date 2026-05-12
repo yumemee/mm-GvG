@@ -167,34 +167,30 @@ function renderTable(logData, isLive) {
     let combined = [];
 
     for (let i = 1; i <= 21; i++) {
-        // その拠点のログを全件抽出
+        // 当該拠点のログを抽出
         const castleLogs = logData.filter(d => String(d.CastleID) === String(i));
         
-        // データを集約するための器（初期値はハイフン）
         let merged = {
             dName: "-", aName: "-",
             dTime: "-", aTime: "-", fTime: "-", cTime: "-"
         };
 
-        // 重要：全ログ行をループして、1つでも時刻があれば「器」に格納し、二度と「-」で上書きさせない
         castleLogs.forEach(entry => {
-            // 防衛開始時刻
-            if (entry.DefenseTime && entry.DefenseTime !== "-") merged.dTime = entry.DefenseTime;
-            // 攻撃開始時刻
-            if (entry.AttackTime && entry.AttackTime !== "-") merged.aTime = entry.AttackTime;
-            // 陥落時刻
-            if (entry.FallenTime && entry.FallenTime !== "-") merged.fTime = entry.FallenTime;
-            // 反撃時刻
-            if (entry.CounterTime && entry.CounterTime !== "-") merged.cTime = entry.CounterTime;
+            // 【修正の肝】null または "-" 以外の場合のみ、値を更新する
+            const isValid = (val) => val !== null && val !== undefined && val !== "-";
 
-            // ギルド名の取得
-            if (entry.DefenseGuildName && entry.DefenseGuildName !== "-") merged.dName = entry.DefenseGuildName;
-            if (entry.AttackGuildName && entry.AttackGuildName !== "-" && entry.AttackGuildName !== "未所属") {
+            if (isValid(entry.DefenseTime)) merged.dTime = entry.DefenseTime;
+            if (isValid(entry.AttackTime))  merged.aTime = entry.AttackTime;
+            if (isValid(entry.FallenTime))  merged.fTime = entry.FallenTime;
+            if (isValid(entry.CounterTime)) merged.cTime = entry.CounterTime;
+
+            if (isValid(entry.DefenseGuildName)) merged.dName = entry.DefenseGuildName;
+            if (isValid(entry.AttackGuildName) && entry.AttackGuildName !== "未所属") {
                 merged.aName = entry.AttackGuildName;
             }
         });
 
-        // ライブデータの反映
+        // ライブデータ（WebSocket）がある場合は上書き
         const wsInfo = wsCastleData[i] || {};
         let displayD = merged.dName;
         let displayA = merged.aName;
@@ -206,17 +202,19 @@ function renderTable(logData, isLive) {
             if (liveD !== "-") displayD = liveD;
             if (liveA !== "-") displayA = liveA;
             dp = wsInfo.dp || 0; ap = wsInfo.ap || 0;
-            // 占領状態(state 2,3)なら攻守交代
             if (wsInfo.state === 2 || wsInfo.state === 3) {
                 [displayD, displayA] = [displayA, displayD];
             }
         }
 
-        // 状態バッジ判定
+        // 状態判定
         let status = "確定", sClass = "s-defense";
         if (merged.cTime !== "-") { status = "反撃"; sClass = "s-battle"; }
         else if (merged.fTime !== "-") { status = "陥落"; sClass = "s-fallen"; }
         else if (displayA !== "-" && displayA !== "未所属") { status = "宣戦"; sClass = "s-battle"; }
+
+        // 時刻文字列から年(26/)を削って見やすく加工（任意）
+        const formatTime = (t) => t.length > 10 ? t.split(' ')[1] : t;
 
         html += `<tr>
             <td style="color:var(--accent)">${i}</td>
@@ -225,10 +223,10 @@ function renderTable(logData, isLive) {
             <td><span class="c-defense">${dp}</span> / <span class="c-attack">${ap}</span></td>
             <td class="c-attack">${displayA}</td>
             <td><span class="badge ${sClass}">${status}</span></td>
-            <td class="time-cell">${merged.dTime}</td>
-            <td class="time-cell">${merged.aTime}</td>
-            <td class="time-cell">${merged.fTime}</td>
-            <td class="time-cell">${merged.cTime}</td>
+            <td class="time-cell">${formatTime(merged.dTime)}</td>
+            <td class="time-cell">${formatTime(merged.aTime)}</td>
+            <td class="time-cell">${formatTime(merged.fTime)}</td>
+            <td class="time-cell">${formatTime(merged.cTime)}</td>
         </tr>`;
         combined.push({name: displayD, pt: dp});
     }
