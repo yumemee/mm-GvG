@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>▶ GRAND WAR MONITOR / PROXY VER</title>
+    <title>▶ GRAND WAR MONITOR / DIAGNOSTIC FIX</title>
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -15,49 +15,77 @@
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 13px; min-height: 100vh; }
+        
         header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 16px; position: sticky; top: 0; z-index: 101; }
         .sticky-nav { position: sticky; top: 195px; z-index: 100; background: var(--bg); }
+
         h1 { font-family: var(--mono); font-size: 14px; letter-spacing: 2px; color: var(--accent); margin-bottom: 12px; text-align: center; }
+
         .controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
         .ctrl-group { display: flex; flex-direction: column; gap: 4px; }
         label { font-size: 9px; color: var(--muted); font-weight: bold; white-space: nowrap; }
         select, input { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 8px 4px; font-size: 11px; border-radius: 4px; outline: none; width: 100%; height: 35px; }
+
         .world-row { grid-column: 1 / -1; margin-top: 4px; }
-        .world-info { font-size: 10px; color: var(--accent); background: rgba(59, 130, 246, 0.1); padding: 8px; border-radius: 4px; text-align: center; display: block; border: 1px dashed rgba(59, 130, 246, 0.3); font-weight: bold; }
+        .world-info { 
+            font-size: 10px; color: var(--accent); background: rgba(59, 130, 246, 0.1); 
+            padding: 8px; border-radius: 4px; text-align: center; display: block; 
+            min-height: 1.2em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            border: 1px dashed rgba(59, 130, 246, 0.3); font-weight: bold;
+        }
+
         .manual-row { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 2fr; gap: 8px; margin-top: 4px; }
         .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        button { border: none; color: #fff; padding: 8px; font-size: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; height: 35px; display: flex; align-items: center; justify-content: center; }
+        
+        button { border: none; color: #fff; padding: 8px; font-size: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; height: 35px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
         #autoBtn { background: var(--muted); width: 100%; }
         #autoBtn.active { background: var(--defense); box-shadow: 0 0 10px var(--defense); }
         .reset-btn { background: transparent; border: 1px solid var(--attack); color: var(--attack); }
+
         .status-bar { background: var(--surface); border-bottom: 1px solid var(--border2); padding: 8px 16px; display: flex; flex-direction: column; gap: 8px; }
         .day-tabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
-        .day-tab { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); padding: 4px 10px; border-radius: 3px; cursor: pointer; font-family: var(--mono); font-size: 10px; }
-        .day-tab.active { border-color: var(--accent); color: var(--accent); }
+        .day-tabs::-webkit-scrollbar { display: none; }
+        .day-tab { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); padding: 4px 10px; border-radius: 3px; cursor: pointer; font-family: var(--mono); font-size: 10px; white-space: nowrap; }
+        .day-tab.active { border-color: var(--accent); color: var(--accent); background: #1a2030; }
+        
         .status-info { display: flex; justify-content: space-between; align-items: center; width: 100%; }
         #clock { font-family: var(--mono); font-weight: bold; color: var(--accent); font-size: 13px; }
+        #updateStatus { font-size: 10px; font-weight: bold; }
+
         .guild-summary { background: var(--surface2); border-bottom: 1px solid var(--border); padding: 6px 16px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
         .summary-label { font-size: 10px; font-weight: bold; color: var(--muted); background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 3px; border: 1px solid var(--border2); display: flex; align-items: center; gap: 5px; }
+        .summary-label::before { content: ""; width: 6px; height: 6px; background: var(--defense); border-radius: 50%; }
         .guild-chip { background: rgba(255,255,255,0.05); border: 1px solid var(--border); padding: 3px 10px; border-radius: 3px; font-size: 11px; font-family: var(--mono); }
         .guild-chip b { color: var(--defense); margin-left: 6px; }
-        #tableContainer { width: 100%; overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; margin-top: 10px; }
+
+        .main { padding: 10px; }
+        #tableContainer { width: 100%; overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; min-height: 200px; }
         table { width: 100%; border-collapse: separate; border-spacing: 0; font-family: var(--mono); font-size: 12px; min-width: 1000px; }
-        thead th { background: var(--surface2); padding: 12px 10px; text-align: left; color: var(--muted); position: sticky; top: 0; border-bottom: 1px solid var(--border); z-index: 2; }
+        thead th { background: var(--surface2); padding: 12px 10px; text-align: left; color: var(--muted); position: sticky; top: 0; border-bottom: 1px solid var(--border); font-size: 11px; z-index: 2; }
         tbody td { padding: 10px; border-bottom: 1px solid var(--border2); white-space: nowrap; }
-        table th:nth-child(1), table td:nth-child(1) { position: sticky; left: 0; z-index: 3; background: var(--surface); width: 40px; }
-        table th:nth-child(2), table td:nth-child(2) { position: sticky; left: 40px; z-index: 3; background: var(--surface); border-right: 1px solid var(--border); }
-        .time-cell { font-size: 11px; background: rgba(255,255,255,0.03); border-radius: 2px; padding: 2px 4px; text-align: center; }
+
+        table th:nth-child(1), table td:nth-child(1) { position: sticky; left: 0; z-index: 3; width: 40px; background: var(--surface); }
+        table th:nth-child(2), table td:nth-child(2) { position: sticky; left: 40px; z-index: 3; border-right: 1px solid var(--border); background: var(--surface); }
+        thead th:nth-child(1), thead th:nth-child(2) { background: var(--surface2) !important; }
+
+        .time-cell { font-size: 11px; color: var(--text); background: rgba(255,255,255,0.03); border-radius: 2px; padding: 2px 4px; text-align: center; }
         .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; }
         .s-battle { background: #3d2e00; color: var(--battle); }
         .s-fallen { background: #3d1000; color: var(--fallen); }
         .s-defense { background: #0d3020; color: var(--defense); }
+        
         .indicator { width: 8px; height: 8px; border-radius: 50%; background: #333; display: inline-block; margin-right: 8px; }
         .indicator.active { background: var(--defense); animation: pulse 1s infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
         @media (min-width: 768px) {
-            .controls { grid-template-columns: 1.5fr 1fr 1fr 2fr 1fr 2fr; align-items: flex-end; }
-            .world-row, .manual-row { grid-column: auto; margin-top: 0; }
-            .sticky-nav { top: 110px; }
+            h1 { text-align: left; }
+            .controls { grid-template-columns: 1.5fr 1fr 1fr 2fr 1fr 2fr; gap: 10px; align-items: flex-end; }
+            .world-row { grid-column: auto; margin-top: 0; }
+            .manual-row { grid-column: auto; display: contents; }
+            .status-bar { flex-direction: row; align-items: center; justify-content: space-between; }
+            .status-info { width: auto; gap: 20px; }
+            .sticky-nav { top: 110px; } 
         }
     </style>
 </head>
@@ -66,32 +94,97 @@
 <header>
     <h1>▶ GRAND WAR MONITOR</h1>
     <div class="controls">
-        <div class="ctrl-group"><label>GROUP</label><select id="groupSelect"></select></div>
-        <div class="ctrl-group"><label>CLASS</label><select id="classSelect"><option value="3" selected>G-Master</option><option value="2">Expert</option><option value="1">Elite</option></select></div>
-        <div class="ctrl-group"><label>BLOCK</label><select id="blockSelect"><option value="0">A</option><option value="1" selected>B</option><option value="2">C</option><option value="3">D</option></select></div>
-        <div class="world-row"><label>WORLD INFO</label><div id="selectedWorldDisplay" class="world-info">Select a group...</div></div>
-        <div class="manual-row"><div class="ctrl-group"><label>MANUAL ID</label><input type="number" id="groupManual" placeholder="ID"></div>
-        <div class="btn-group"><button id="autoBtn"><span class="indicator"></span>FETCH</button><button id="resetLogBtn" class="reset-btn">RESET</button></div></div>
+        <div class="ctrl-group">
+            <label>GROUP</label>
+            <select id="groupSelect"></select>
+        </div>
+        <div class="ctrl-group">
+            <label>CLASS</label>
+            <select id="classSelect">
+                <option value="3" selected>G-Master</option>
+                <option value="2">Expert</option>
+                <option value="1">Elite</option>
+            </select>
+        </div>
+        <div class="ctrl-group">
+            <label>BLOCK</label>
+            <select id="blockSelect">
+                <option value="0">A</option>
+                <option value="1" selected>B</option>
+                <option value="2">C</option>
+                <option value="3">D</option>
+            </select>
+        </div>
+        
+        <div class="world-row">
+            <label>WORLD INFO</label>
+            <div id="selectedWorldDisplay" class="world-info">Select a group...</div>
+        </div>
+        
+        <div class="manual-row">
+            <div class="ctrl-group">
+                <label>MANUAL ID</label>
+                <input type="number" id="groupManual" placeholder="ID">
+            </div>
+            <div class="btn-group">
+                <button id="autoBtn"><span class="indicator"></span>FETCH</button>
+                <button id="resetLogBtn" class="reset-btn">RESET</button>
+            </div>
+        </div>
     </div>
 </header>
 
 <div class="sticky-nav">
     <div class="status-bar">
-        <div class="day-tabs" id="dayTabs"><span class="day-tab" data-day="Sat">SAT</span><span class="day-tab" data-day="Sun">SUN</span><span class="day-tab" data-day="Tue">TUE</span><span class="day-tab" data-day="Wed">WED</span><span class="day-tab" data-day="Thu">THU</span><span class="day-tab" data-day="Fri">FRI</span></div>
-        <div class="status-info"><span id="updateStatus" style="color:var(--accent)">READY</span><span id="clock">00:00:00</span></div>
+        <div class="day-tabs" id="dayTabs">
+            <span class="day-tab" data-day="Sat">SAT</span>
+            <span class="day-tab" data-day="Sun">SUN</span>
+            <span class="day-tab" data-day="Tue">TUE</span>
+            <span class="day-tab" data-day="Wed">WED</span>
+            <span class="day-tab" data-day="Thu">THU</span>
+            <span class="day-tab" data-day="Fri">FRI</span>
+        </div>
+        <div class="status-info">
+            <span id="updateStatus" style="color:var(--accent)">READY</span>
+            <span id="clock">00:00:00</span>
+        </div>
     </div>
-    <div class="guild-summary" id="guildSummary"><div class="summary-label">防衛パーティ数</div></div>
+    <div class="guild-summary" id="guildSummary">
+        <div class="summary-label">防衛パーティ数</div>
+    </div>
 </div>
 
-<div id="tableContainer" style="padding: 10px;"><p style="text-align:center; padding:40px; color:var(--muted);">IDを選択して FETCH を押してください</p></div>
+<div class="main">
+    <div id="tableContainer">
+        <p style="text-align:center; padding:40px; color:var(--muted);">IDを選択して FETCH を押してください</p>
+    </div>
+</div>
 
 <script>
-    // CORS回避用のプロキシサービス
-    const PROXY = 'https://api.codetabs.com/v1/proxy?quest=';
-    const LOG_API_BASE = 'https://api.tamamo.dev/GvGLog';
+    // ブラウザのキャッシュ対策としてタイムスタンプを付与する関数
+    const getApiUrl = (baseUrl, params) => {
+        const url = new URL(baseUrl);
+        Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+        url.searchParams.append('_t', Date.now()); // キャッシュ回避
+        return url.toString();
+    };
+
+    const BASE_LOG_API = 'https://api.tamamo.dev/GvGLog';
     const CASTLE_API = 'https://tamamo.dev/assets/Resource/CastleId.json';
     
-    const GROUP_DATA = { 18: "W85,89,93,97", 19: "W101,105,109,113", 20: "W104,108,112,116", 21: "W117,121,125,129", 140: "W149-152", 141: "W1,7,12,19", 142: "W2,8,20,27", 143: "W3,4,13,31", 144: "W5,9,21,30", 145: "W6,14,15,32", 146: "W10,18,24,29", 147: "W11,17,22,26", 148: "W16,23,25,28", 149: "W33,54,60,63", 150: "W34,43,51,61", 151: "W35,44,48,53", 152: "W36,38,47,64", 153: "W37,46,57,58", 154: "W39,52,56,62", 155: "W40,41,42,55", 156: "W45,49,50,59", 157: "W65,67,78,96", 158: "W66,69,76,85", 159: "W68,70,84,93", 160: "W71,75,82,89", 161: "W72,79,86,91", 162: "W73,83,90,95", 163: "W74,80,87,94", 164: "W77,81,88,92", 165: "W97,104,110,115", 166: "W98,103,108,113", 167: "W99,102,109,116", 168: "W100,105,107,114", 169: "W101,106,111,112", 170: "W117,127,129,132", 171: "W118,124,126,131", 172: "W119,121,122,125", 173: "W120,123,128,130", 174: "W133,139,143,148", 175: "W134,137,142,145", 176: "W135,138,144,147", 177: "W136,140,141,146", 178: "W153,154,155,156", 179: "W157,158,159,160", 180: "W161-164" };
+    const GROUP_DATA = { 
+        18: "W85, W89, W93, W97", 19: "W101, W105, W109, W113", 20: "W104, W108, W112, W116", 21: "W117, W121, W125, W129",
+        140: "W149-152", 141: "W1, W7, W12, W19", 142: "W2, W8, W20, W27", 143: "W3, W4, W13, W31", 144: "W5, W9, W21, W30", 
+        145: "W6, W14, W15, W32", 146: "W10, W18, W24, W29", 147: "W11, W17, W22, W26", 148: "W16, W23, W25, W28", 
+        149: "W33, W54, W60, W63", 150: "W34, W43, W51, W61", 151: "W35, W44, W48, W53", 152: "W36, W38, W47, W64", 
+        153: "W37, W46, W57, W58", 154: "W39, W52, W56, W62", 155: "W40, W41, W42, W55", 156: "W45, W49, W50, W59", 
+        157: "W65, W67, W78, W96", 158: "W66, W69, W76, W85", 159: "W68, W70, W84, W93", 160: "W71, W75, W82, W89", 
+        161: "W72, W79, W86, W91", 162: "W73, W83, W90, W95", 163: "W74, W80, W87, W94", 164: "W77, W81, W88, W92", 
+        165: "W97, W104, W110, W115", 166: "W98, W103, W108, W113", 167: "W99, W102, W109, W116", 168: "W100, W105, W107, W114", 
+        169: "W101, W106, W111, W112", 170: "W117, W127, W129, W132", 171: "W118, W124, W126, W131", 172: "W119, W121, W122, W125", 
+        173: "W120, W123, W128, W130", 174: "W133, W139, W143, W148", 175: "W134, W137, W142, W145", 176: "W135, W138, W144, W147", 
+        177: "W136, W140, W141, W146", 178: "W153, W154, W155, W156", 179: "W157, W158, W159, W160", 180: "W161-W164"
+    };
 
     let castleNames = {};
     let isFetching = false;
@@ -99,69 +192,112 @@
     let currentDay = dayNames[new Date().getDay()];
     if (currentDay === 'Mon') currentDay = 'Sat';
 
-    function getHistory() { return JSON.parse(localStorage.getItem(`gvg_history_${currentDay}`)) || {}; }
-    function saveHistory(data) { localStorage.setItem(`gvg_history_${currentDay}`, JSON.stringify(data)); }
+    function getHistory() { return JSON.parse(localStorage.getItem(`gvg_history_log_${currentDay}`)) || {}; }
+    function saveHistory(data) { localStorage.setItem(`gvg_history_log_${currentDay}`, JSON.stringify(data)); }
 
-    async function fetchWithProxy(url) {
-        const response = await fetch(PROXY + encodeURIComponent(url));
-        if (!response.ok) throw new Error('Proxy error');
-        return await response.json();
+    function setupGroupList() {
+        const select = document.getElementById('groupSelect');
+        const display = document.getElementById('selectedWorldDisplay');
+        select.innerHTML = '<option value="">-- SELECT --</option>';
+        Object.keys(GROUP_DATA).sort((a,b) => Number(a)-Number(b)).forEach(id => {
+            const opt = document.createElement('option');
+            opt.value = id; 
+            opt.textContent = `${id} [ ${GROUP_DATA[id]} ]`;
+            select.appendChild(opt);
+        });
+        select.addEventListener('change', () => {
+            display.textContent = select.value ? `World: ${GROUP_DATA[select.value]}` : "Select a group...";
+        });
+    }
+
+    async function fetchCastleNames() {
+        try {
+            const res = await fetch(CASTLE_API);
+            const data = await res.json();
+            data.forEach(item => { castleNames[item.Id] = item.Name; });
+        } catch (e) { console.warn("拠点名の取得に失敗しました(表示には影響ありません)"); }
     }
 
     async function updateData() {
         if (isFetching) return;
         const group = document.getElementById('groupManual').value || document.getElementById('groupSelect').value;
         const statusEl = document.getElementById('updateStatus');
-        if (!group) { statusEl.textContent = "ID未入力"; return; }
+        
+        if (!group) {
+            statusEl.textContent = "ID未入力";
+            statusEl.style.color = "#ef4444";
+            return;
+        }
 
         isFetching = true;
-        statusEl.textContent = "FETCHING...";
+        statusEl.textContent = "CONNECTING...";
+        statusEl.style.color = "var(--accent)";
         
         const gClass = document.getElementById('classSelect').value;
         const block = document.getElementById('blockSelect').value;
-        const targetUrl = `${LOG_API_BASE}?Group=${group}&Class=${gClass}&Block=${block}&Week=${currentDay}`;
+        
+        // パラメータを構築
+        const params = { Group: group, Class: gClass, Block: block, Week: currentDay };
+        const url = getApiUrl(BASE_LOG_API, params);
 
         try {
-            const data = await fetchWithProxy(targetUrl);
+            // mode: 'cors' を明示的に指定して通信
+            const res = await fetch(url, { 
+                mode: 'cors',
+                headers: { 'Accept': 'application/json' }
+            });
+
+            if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+            
+            const data = await res.json();
+            
             if (!data || data.length === 0) {
-                statusEl.textContent = "データ空";
+                statusEl.textContent = "データなし (ID/曜日を確認)";
+                statusEl.style.color = "#f97316";
+                document.getElementById('tableContainer').innerHTML = "<p style='text-align:center; padding:40px; color:var(--muted);'>選択された条件のデータは存在しません。</p>";
                 return;
             }
+
             processHistory(data);
             updateGuildSummary(data);
             renderTable(data);
             statusEl.textContent = `OK: ${new Date().toLocaleTimeString()}`;
             statusEl.style.color = "var(--defense)";
+
         } catch (e) {
-            statusEl.textContent = "通信失敗(PROXY)";
+            console.error("Fetch Error:", e);
+            statusEl.textContent = "通信失敗: 制限を確認してください";
             statusEl.style.color = "#ef4444";
-        } finally { isFetching = false; }
+            alert("通信に失敗しました。\n\n原因の可能性があります：\n1. ブラウザが外部接続をブロックしている\n2. LINEなどのアプリ内ブラウザを使用している\n3. ネット環境が不安定\n\nブラウザの設定で『安全でないコンテンツを許可』するか、Chrome/Safariで開き直してください。");
+        } finally { 
+            isFetching = false; 
+        }
     }
 
     function processHistory(data) {
         const now = new Date().toLocaleTimeString('ja-JP', { hour12: false });
-        let history = getHistory();
+        let historyLog = getHistory();
         data.forEach(row => {
             const id = row.CastleId;
-            if (!history[id]) history[id] = { attack: '-', defense: '-', counter: '-', fallen: '-' };
-            if (row.AttackPartyCount > 0 && row.State === 1 && history[id].attack === '-') history[id].attack = now;
-            if (row.DefensePartyCount > 0 && history[id].defense === '-') history[id].defense = now;
-            if (row.State === 3 && history[id].counter === '-') history[id].counter = now;
-            if (row.State === 2 && history[id].fallen === '-') history[id].fallen = now;
+            if (!historyLog[id]) historyLog[id] = { attack: '-', defense: '-', counter: '-', fallen: '-' };
+            if (row.AttackPartyCount > 0 && row.State === 1 && historyLog[id].attack === '-') historyLog[id].attack = now;
+            if (row.DefensePartyCount > 0 && historyLog[id].defense === '-') historyLog[id].defense = now;
+            if (row.State === 3 && historyLog[id].counter === '-') historyLog[id].counter = now;
+            if (row.State === 2 && historyLog[id].fallen === '-') historyLog[id].fallen = now;
         });
-        saveHistory(history);
+        saveHistory(historyLog);
     }
 
     function renderTable(data) {
-        const history = getHistory();
-        let html = `<table><thead><tr><th>ID</th><th>拠点</th><th>所有ギルド</th><th>攻撃ギルド</th><th>状態</th><th>P(防/攻)</th><th>侵攻</th><th>防衛</th><th>反撃</th><th>陥落</th></tr></thead><tbody>`;
-        data.sort((a,b) => a.CastleId - b.CastleId).forEach(row => {
+        let html = `<table><thead><tr><th>ID</th><th>拠点</th><th>所有ギルド</th><th>攻撃ギルド</th><th>状態</th><th>P(防/攻)</th><th style="color:var(--attack)">侵攻開始</th><th style="color:var(--defense)">防衛開始</th><th style="color:var(--battle)">反撃開始</th><th style="color:var(--fallen)">陥落時刻</th></tr></thead><tbody>`;
+        const historyLog = getHistory();
+        data.sort((a, b) => a.CastleId - b.CastleId).forEach(row => {
             const id = row.CastleId;
-            const log = history[id] || { attack: '-', defense: '-', counter: '-', fallen: '-' };
-            const attacker = row.AttackerGuildName?.trim() || "-";
+            const log = historyLog[id] || { attack: '-', defense: '-', counter: '-', fallen: '-' };
+            const attacker = row.AttackerGuildName && row.AttackerGuildName.trim() !== "" ? row.AttackerGuildName : "-";
             let label = {1:'宣戦', 2:'陥落', 3:'反撃', 4:'安定'}[row.State] || '安定', sClass = {1:'s-battle', 2:'s-fallen', 3:'s-battle', 4:'s-defense'}[row.State] || 's-defense';
             if (attacker === "-") { label = "確定"; sClass = "s-defense"; }
-            html += `<tr><td style="color:var(--accent)">${id}</td><td><b>${castleNames[id] || 'Castle '+id}</b></td><td>${row.GuildName || '-'}</td><td>${attacker}</td><td><span class="badge ${sClass}">${label}</span></td><td><span style="color:var(--defense)">${row.DefensePartyCount}</span>/<span style="color:var(--attack)">${row.AttackPartyCount}</span></td><td class="time-cell">${log.attack}</td><td class="time-cell">${log.defense}</td><td class="time-cell">${log.counter}</td><td class="time-cell" style="color:var(--fallen)">${log.fallen}</td></tr>`;
+            html += `<tr><td style="color:var(--accent); font-weight:bold;">${id}</td><td><strong>${castleNames[id] || 'Castle '+id}</strong></td><td>${row.GuildName || '-'}</td><td>${attacker}</td><td><span class="badge ${sClass}">${label}</span></td><td><span style="color:var(--defense)">${row.DefensePartyCount}</span> / <span style="color:var(--attack)">${row.AttackPartyCount}</span></td><td class="time-cell">${log.attack}</td><td class="time-cell">${log.defense}</td><td class="time-cell">${log.counter}</td><td class="time-cell" style="color:var(--fallen)">${log.fallen}</td></tr>`;
         });
         document.getElementById('tableContainer').innerHTML = html + `</tbody></table>`;
     }
@@ -169,24 +305,14 @@
     function updateGuildSummary(data) {
         const summary = {};
         data.forEach(row => { if (row.GuildName) summary[row.GuildName] = (summary[row.GuildName] || 0) + row.DefensePartyCount; });
+        const container = document.getElementById('guildSummary');
         const sorted = Object.entries(summary).sort((a,b) => b[1] - a[1]);
-        document.getElementById('guildSummary').innerHTML = `<div class="summary-label">防衛パーティ数</div>` + sorted.map(([n, c]) => `<div class="guild-chip">${n}<b>${c}P</b></div>`).join('');
-    }
-
-    function setupGroupList() {
-        const select = document.getElementById('groupSelect');
-        select.innerHTML = '<option value="">-- SELECT --</option>';
-        Object.keys(GROUP_DATA).sort((a,b) => Number(a)-Number(b)).forEach(id => {
-            const opt = document.createElement('option');
-            opt.value = id; opt.textContent = `${id} [ ${GROUP_DATA[id]} ]`;
-            select.appendChild(opt);
-        });
-        select.addEventListener('change', () => {
-            document.getElementById('selectedWorldDisplay').textContent = select.value ? `World: ${GROUP_DATA[select.value]}` : "Select a group...";
-        });
+        let labelHtml = `<div class="summary-label">防衛パーティ数</div>`;
+        container.innerHTML = labelHtml + sorted.map(([name, count]) => `<div class="guild-chip">${name}<b>${count}P</b></div>`).join('');
     }
 
     setInterval(() => { document.getElementById('clock').textContent = new Date().toLocaleTimeString('ja-JP', { hour12: false }); }, 1000);
+    
     document.querySelectorAll('.day-tab').forEach(tab => {
         if (tab.dataset.day === currentDay) tab.classList.add('active');
         tab.addEventListener('click', () => {
@@ -194,15 +320,26 @@
             tab.classList.add('active'); currentDay = tab.dataset.day; updateData();
         });
     });
-    document.getElementById('autoBtn').addEventListener('click', function() {
-        this.classList.add('active'); updateData().then(() => setTimeout(() => this.classList.remove('active'), 800));
-    });
-    document.getElementById('resetLogBtn').addEventListener('click', () => { if (confirm('履歴をリセットしますか？')) { localStorage.removeItem(`gvg_history_${currentDay}`); location.reload(); } });
 
-    async function init() {
-        setupGroupList();
-        try { castleNames = await fetchWithProxy(CASTLE_API); } catch(e) {}
-    }
+    document.getElementById('autoBtn').addEventListener('click', function() {
+        this.classList.add('active');
+        this.innerHTML = '<span class="indicator active"></span>FETCH...';
+        updateData().then(() => {
+            setTimeout(() => {
+                this.classList.remove('active');
+                this.innerHTML = '<span class="indicator"></span>FETCH';
+            }, 800);
+        });
+    });
+
+    document.getElementById('resetLogBtn').addEventListener('click', () => {
+        if (confirm(`${currentDay}の履歴をすべてリセットしますか？`)) { 
+            localStorage.removeItem(`gvg_history_log_${currentDay}`); 
+            location.reload();
+        }
+    });
+
+    async function init() { setupGroupList(); await fetchCastleNames(); }
     init();
 </script>
 </body>
