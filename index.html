@@ -185,9 +185,31 @@
         }
     }
 
+    // ★ 日付をカットして時刻だけにする便利関数（nullも弾く）
+    function formatTimeStr(t) {
+        if (!t || t === "null" || t === "undefined" || t === "-") return "-";
+        const parts = String(t).trim().split(" ");
+        // "26/05/12 08:30:29" なら後ろの "08:30:29" だけを返す
+        return parts.length > 1 ? parts[parts.length - 1] : parts[0];
+    }
+
+    // --- WebSocketデータ解析 ---
     const parseHeader = (v, o) => { let a = v.getUint32(o, true); return { value: { GroupId: (a >>> 8) & 255, Class: (a >>> 16) & 7, Block: (a >>> 5) & 7, CastleId: a & 31, WorldId: a >>> 19 }, offset: o + 4 }; };
     const parseGuild = (v, o) => { let a = v.getUint32(o, true), l = v.getUint8(o + 4, true); return { value: { GuildId: 1000 * a, GuildName: new TextDecoder("utf-8").decode(new Uint8Array(v.buffer, o + 5, l)) }, offset: o + 5 + l }; };
-    const parseCastle = (v, o) => { return { value: { GuildId: 1000 * v.getUint32(o, true), AttackerGuildId: 1000 * v.getUint32(o + 4, true), DefensePartyCount: v.getUint16(o + 12, true), AttackPartyCount: v.getUint16(o + 14, true), GvgCastleState: v.getUint8(o + 16, true) }, offset: o + 20 }; };
+    // ★ 陥落時刻（タイムスタンプ）の取得も追加しました
+    const parseCastle = (v, o) => { return { value: { GuildId: 1000 * v.getUint32(o, true), AttackerGuildId: 1000 * v.getUint32(o + 4, true), UtcFallenTimeStamp: 1000 * v.getUint32(o + 8, true), DefensePartyCount: v.getUint16(o + 12, true), AttackPartyCount: v.getUint16(o + 14, true), GvgCastleState: v.getUint8(o + 16, true) }, offset: o + 20 }; };
+
+    async function fetchCastleNames() {
+        try {
+            const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(CASTLE_API + '?_t=' + Date.now())}`);
+            if(res.ok) {
+                const data = await res.json();
+                if (data.globalGvG) {
+                    Object.entries(data.globalGvG).forEach(([name, id]) => { castleNames[String(id)] = name; });
+                }
+            }
+        } catch (e) { console.warn("Castle names fetch skipped."); }
+    }
 
     async function updateData() {
         const group = document.getElementById('groupManual').value || document.getElementById('groupSelect').value;
@@ -196,10 +218,19 @@
         document.getElementById('updateStatus').textContent = "FETCHING...";
 
         let logDataArray = [];
+        const logUrl = BASE_LOG_API + `?Group=${group}&Class=${classId}&Block=${blockId}&Week=${currentDay}&_t=${Date.now()}`;
+        
+        // ★ キャッシュされにくいcorsproxyを優先し、ダメなら直接取得にフォールバック
         try {
-            const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(BASE_LOG_API + `?Group=${group}&Class=${classId}&Block=${blockId}&Week=${currentDay}&_t=${Date.now()}`)}`);
-            if (res.ok) { const json = await res.json(); logDataArray = json.data?.Log || []; }
-        } catch (e) {}
+            const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(logUrl)}`);
+            if(res.ok) { const json = await res.json(); logDataArray = json.data?.Log || []; }
+            else throw new Error();
+        } catch (e) {
+            try {
+                const res = await fetch(logUrl);
+                if (res.ok) { const json = await res.json(); logDataArray = json.data?.Log || []; }
+            } catch (err) { console.warn("Log API fetch error"); }
+        }
 
         if (ws) ws.close();
         wsGuildData = {}; wsCastleData = [];
@@ -220,7 +251,9 @@
                 else break;
             }
             combineAndRender(logDataArray);
+            document.getElementById('updateStatus').textContent = "OK (" + currentDay + "): " + new Date().toLocaleTimeString();
         };
+        ws.onerror = () => { document.getElementById('updateStatus').textContent = "WS ERROR"; };
     }
 
     function combineAndRender(logDataArray) {
@@ -231,7 +264,27 @@
             let dGuild = wsGuildData[wsInfo.GuildId] || "-", aGuild = wsGuildData[wsInfo.AttackerGuildId] || "-";
             if (wsInfo.GvgCastleState == 2 || wsInfo.GvgCastleState == 3) { let t = dGuild; dGuild = aGuild; aGuild = t; }
 
-            const row = { CastleID: i, DefenseGuildName: dGuild, AttackGuildName: aGuild, DefensePartyCount: wsInfo.DefensePartyCount || 0, AttackPartyCount: wsInfo.AttackPartyCount || 0, DefenseTime: logInfo.DefenseTime || "-", AttackTime: logInfo.AttackTime || "-", FallenTime: logInfo.FallenTime || "-", CounterTime: logInfo.CounterTime || "-" };
+            // ★ WebSocketデータから陥落時間を補完するバックアップ機能
+            let fTime = formatTimeStr(logInfo.FallenTime);
+            if (fTime === "-" && wsInfo.UtcFallenTimeStamp > 0) {
+                const d = new Date(wsInfo.UtcFallenTimeStamp);
+                if (d.getFullYear() > 2000) {
+                    fTime = String(d.getHours()).padStart(2, '0') + ":" + String(d.getMinutes()).padStart(2, '0') + ":" + String(d.getSeconds()).padStart(2, '0');
+                }
+            }
+
+            // ★ ここで各時刻を整形して格納
+            const row = { 
+                CastleID: i, 
+                DefenseGuildName: dGuild, 
+                AttackGuildName: aGuild, 
+                DefensePartyCount: wsInfo.DefensePartyCount || 0, 
+                AttackPartyCount: wsInfo.AttackPartyCount || 0, 
+                DefenseTime: formatTimeStr(logInfo.DefenseTime), 
+                AttackTime: formatTimeStr(logInfo.AttackTime), 
+                FallenTime: fTime, 
+                CounterTime: formatTimeStr(logInfo.CounterTime) 
+            };
             combinedData.push(row);
 
             const mapCastle = document.querySelector(`gvg-castle[castle-id="${i}"]`);
@@ -250,14 +303,12 @@
     }
 
     function renderTable(data) {
-        // ★ ヘッダーの名前を「防衛/侵攻PT」に変更
         let html = `<table><colgroup><col style="width: 40px;"><col style="width: 120px;"><col style="width: 150px;"><col style="width: 110px;"><col style="width: 150px;"><col style="width: 60px;"><col style="width: 120px;"><col style="width: 120px;"><col style="width: 120px;"><col style="width: 120px;"></colgroup><thead><tr><th>ID</th><th>拠点名</th><th class="c-defense">防衛ギルド</th><th style="text-align:center;">防衛/侵攻PT</th><th class="c-attack">侵攻ギルド</th><th>状態</th><th class="c-defense">防衛開始</th><th class="c-attack">攻撃開始</th><th class="c-fallen">陥落時刻</th><th class="c-counter">反撃時刻</th></tr></thead><tbody>`;
         data.sort((a, b) => a.CastleID - b.CastleID).forEach(row => {
             let label = '確定', sClass = 's-defense';
             if (row.FallenTime !== "-") { label = '陥落'; sClass = 's-fallen'; }
             else if (row.AttackTime !== "-" || row.AttackGuildName !== "-") { label = '宣戦'; sClass = 's-battle'; }
             
-            // ★ 防衛PT(緑)を左側、侵攻PT(赤)を右側に変更
             html += `<tr><td style="color:var(--accent); font-weight:bold; text-align:center;">${row.CastleID}</td><td><strong>${castleNames[row.CastleID] || `拠点 ${row.CastleID}`}</strong></td><td class="c-defense">${row.DefenseGuildName}</td><td style="text-align:center; font-family:var(--mono);"><strong class="c-defense">${row.DefensePartyCount}</strong><span style="color:var(--muted)"> / </span><strong class="c-attack">${row.AttackPartyCount}</strong></td><td class="c-attack">${row.AttackGuildName}</td><td style="text-align:center;"><span class="badge ${sClass}">${label}</span></td><td class="time-cell c-defense">${row.DefenseTime}</td><td class="time-cell c-attack">${row.AttackTime}</td><td class="time-cell c-fallen">${row.FallenTime}</td><td class="time-cell c-counter">${row.CounterTime}</td></tr>`;
         });
         document.getElementById('tableContainer').innerHTML = html + `</tbody></table>`;
