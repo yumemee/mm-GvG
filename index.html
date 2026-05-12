@@ -161,15 +161,20 @@
 </div>
 
 <script>
-    // ブラウザのキャッシュ対策としてタイムスタンプを付与する関数
+    // ブラウザのキャッシュ対策とプロキシ対応を兼ねた関数
     const getApiUrl = (baseUrl, params) => {
-        const url = new URL(baseUrl);
-        Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
-        url.searchParams.append('_t', Date.now()); // キャッシュ回避
-        return url.toString();
+        const query = new URLSearchParams(params);
+        query.append('_t', Date.now()); // キャッシュ回避
+        
+        // ターゲットURLを組み立てる (例: https://api.../GvGLog?Group=165...)
+        const targetUrl = `${baseUrl}?${query.toString()}`;
+        
+        // プロキシURLの直後にターゲットURLを結合して返す
+        return `https://corsproxy.io/?${targetUrl}`;
     };
 
-    const BASE_LOG_API = 'https://corsproxy.io/?https://api.tamamo.dev/GvGLog';
+    // ここは元のAPIアドレスに戻します（関数内でプロキシと合体させるため）
+    const BASE_LOG_API = 'https://api.tamamo.dev/GvGLog';
     const CASTLE_API = 'https://tamamo.dev/assets/Resource/CastleId.json';
     
     const GROUP_DATA = { 
