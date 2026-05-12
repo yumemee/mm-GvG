@@ -89,7 +89,7 @@
     const CASTLE_API = 'https://tamamo.dev/assets/Resource/CastleId.json';
     
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    // 初期選択：現在が月曜なら土曜、それ以外なら今日
+    // 初期選択
     let currentDay = dayNames[new Date().getDay()] === 'Mon' ? 'Sat' : dayNames[new Date().getDay()];
 
     let ws = null;
@@ -116,17 +116,15 @@
         const statusEl = document.getElementById('updateStatus');
         if (!group) return;
 
-        // WebSocketとデータをクリア
         if (ws) { ws.close(); ws = null; }
         wsCastleData = [];
         wsGuildData = {};
 
-        // 厳格な「今日」判定用の文字列 (YYYY-MM-DD)
+        // 【重要】日本時間のローカル日付を YYYY-MM-DD で取得
         const now = new Date();
-        const todayStr = now.toISOString().split('T')[0];
+        const todayStr = now.toLocaleDateString('sv-SE'); // YYYY-MM-DD 形式
         const realTodayDayName = dayNames[now.getDay()];
 
-        // 「今選択しているタブ」が「実際の今日」かどうか
         const isTodaySelected = (currentDay === realTodayDayName);
 
         statusEl.textContent = "FETCHING...";
@@ -144,7 +142,6 @@
             }
         } catch (e) { console.error("Log fetch error"); }
 
-        // もし「今日」のタブならWebSocketを開始
         if (isTodaySelected) {
             ws = new WebSocket("wss://api.mentemori.icu/gvg");
             ws.binaryType = "arraybuffer";
@@ -178,10 +175,9 @@
                         offset += 20;
                     } else break;
                 }
-                combineAndRender(logDataArray, isTodaySelected, todayStr);
+                combineAndRender(logDataArray, true, todayStr);
             };
         } else {
-            // 過去日タブの場合はWebSocketなしで即描画
             combineAndRender(logDataArray, false, todayStr);
         }
         statusEl.textContent = "OK"; 
@@ -192,18 +188,18 @@
         const selectedDay = currentDay; 
 
         for (let i = 1; i <= 21; i++) {
-            // ログのフィルタリング
+            // ログのフィルタリングロジックをより厳密化
             let logInfo = logDataArray.find(d => {
                 const isIdMatch = String(d.CastleID) === String(i);
+                // APIのWeekフィールドと選択したタブを比較
                 const isWeekMatch = d.Week === selectedDay;
-                // Created日付を取得
-                const logDate = d.Created ? d.Created.split(' ')[0] : "";
-
+                
                 if (isTodaySelected) {
-                    // 今日タブの場合：拠点が一致し、かつ日付が今日のものだけ
+                    // 今日タブの場合：拠点が一致し、かつ日付が今日のものだけを優先
+                    const logDate = d.Created ? d.Created.split(' ')[0] : "";
                     return isIdMatch && isWeekMatch && logDate === todayStr;
                 } else {
-                    // 過去タブの場合：拠点と曜日が一致していればOK
+                    // 過去タブの場合：拠点が一致し、Weekが一致していれば採用
                     return isIdMatch && isWeekMatch;
                 }
             }) || {};
@@ -211,12 +207,12 @@
             let wsInfo = wsCastleData[i] || {};
             let dName = "-", aName = "-", dP = 0, aP = 0;
             
-            // WebSocketデータ（リアルタイム）を結合するのは「今日タブ」の時だけ
             if (isTodaySelected) {
                 dName = wsGuildData[wsInfo.GuildId] || "-";
                 aName = wsGuildData[wsInfo.AttackerGuildId] || "-";
                 dP = wsInfo.DefensePartyCount || 0;
                 aP = wsInfo.AttackPartyCount || 0;
+                // 攻守交替の考慮
                 if (wsInfo.GvgCastleState == 2 || wsInfo.GvgCastleState == 3) {
                     let t = dName; dName = aName; aName = t;
                 }
@@ -226,14 +222,14 @@
 
             combinedData.push({
                 CastleID: i, 
-                DefenseGuildName: logInfo.DefenseGuildName || dName, 
-                AttackGuildName: logInfo.AttackGuildName || aName,
-                DefensePartyCount: dP, 
-                AttackPartyCount: aP,
-                DefenseTime: hasLog ? (logInfo.DefenseTime || "-") : "-",
-                AttackTime:  hasLog ? (logInfo.AttackTime || "-") : "-",
-                FallenTime:  hasLog ? (logInfo.FallenTime || "-") : "-",
-                CounterTime: hasLog ? (logInfo.CounterTime || "-") : "-"
+                DefenseGuildName: logInfo.DefenseGuildName || (isTodaySelected ? dName : "-"), 
+                AttackGuildName: logInfo.AttackGuildName || (isTodaySelected ? aName : "-"),
+                DefensePartyCount: isTodaySelected ? dP : 0, 
+                AttackPartyCount: isTodaySelected ? aP : 0,
+                DefenseTime: logInfo.DefenseTime || "-",
+                AttackTime:  logInfo.AttackTime || "-",
+                FallenTime:  logInfo.FallenTime || "-",
+                CounterTime: logInfo.CounterTime || "-"
             });
         }
 
