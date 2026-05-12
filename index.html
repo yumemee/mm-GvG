@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>▶ GRAND WAR MONITOR / STABLE FULL VERSION</title>
+    <title>▶ GRAND WAR MONITOR / INTEGRATED VERSION</title>
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -133,9 +133,11 @@
 
     async function fetchCastleNames() {
         try {
-            const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(CASTLE_API)}`);
+            const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(CASTLE_API + '?_t=' + Date.now())}`);
             const data = await res.json();
-            data.forEach(item => { castleNames[item.id] = item.name; });
+            if (Array.isArray(data)) {
+                data.forEach(item => { castleNames[String(item.id)] = item.name; });
+            }
         } catch (e) { console.error("Castle names fetch error"); }
     }
 
@@ -157,6 +159,9 @@
             const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(BASE_LOG_API + '?' + params.toString())}`);
             const json = await res.json();
             const logData = json.data?.Log || [];
+
+            if (Object.keys(castleNames).length === 0) await fetchCastleNames();
+
             renderTable(logData);
             updateGuildSummary(logData);
             statusEl.textContent = "OK (" + currentDay + "): " + new Date().toLocaleTimeString();
@@ -170,9 +175,10 @@
         </tr></thead><tbody>`;
 
         data.sort((a, b) => a.CastleID - b.CastleID).forEach(row => {
-            const id = row.CastleID;
+            const id = String(row.CastleID);
             const dGuild = row.DefenseGuildName || row.defenseGuildName || "-";
             const aGuild = row.AttackGuildName || row.attackGuildName || "-";
+            const cName = castleNames[id] || `拠点 ${id}`;
             
             let label = '確定', sClass = 's-defense';
             if (row.FallenTime) { 
@@ -183,7 +189,7 @@
 
             html += `<tr>
                 <td style="color:var(--accent); font-weight:bold;">${id}</td>
-                <td><strong>${castleNames[id] || '拠点 '+id}</strong></td>
+                <td><strong>${cName}</strong></td>
                 <td class="c-defense">${dGuild}</td>
                 <td class="c-attack">${aGuild}</td>
                 <td><span class="badge ${sClass}">${label}</span></td>
