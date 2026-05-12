@@ -56,7 +56,6 @@
         .main { padding: 10px; }
         #tableContainer { width: 100%; overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; }
         
-        /* テーブル設定：幅を調整 */
         table { width: 100%; border-collapse: separate; border-spacing: 0; font-family: var(--mono); font-size: 12px; min-width: 1000px; table-layout: fixed; }
         thead th { background: var(--surface2); padding: 12px 6px; text-align: left; color: var(--muted); position: sticky; top: 0; border-bottom: 1px solid var(--border); z-index: 2; overflow: hidden; white-space: nowrap; }
         tbody td { padding: 10px 6px; border-bottom: 1px solid var(--border2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -102,7 +101,7 @@
         <div class="day-tabs" id="dayTabs">
             <span class="day-tab" data-day="Sat">SAT</span><span class="day-tab" data-day="Sun">SUN</span><span class="day-tab" data-day="Tue">TUE</span><span class="day-tab" data-day="Wed">WED</span><span class="day-tab" data-day="Thu">THU</span><span class="day-tab" data-day="Fri">FRI</span>
         </div>
-        <div class="status-info"><span id="updateStatus" style="color:var(--accent)">READY..</span> | <span id="clock">00:00:00</span></div>
+        <div class="status-info"><span id="updateStatus" style="color:var(--accent)">READY</span> | <span id="clock">00:00:00</span></div>
     </div>
     <div class="guild-summary" id="guildSummary"><div class="summary-label">🏰 現在の防衛パーティ数 </div></div>
 </div>
@@ -249,7 +248,13 @@
 
         let html = `<table>
             <colgroup>
-                <col style="width: 40px;">   <col style="width: 100px;">  <col style="width: 100px;">  <col style="width: 100px;">  <col style="width: 100px;">  <col style="width: 60px;">   <col style="width: 110px;">  <col style="width: 110px;">  <col style="width: 110px;">  <col style="width: 110px;">
+                <col style="width: 40px;">
+                <col style="width: 80px;">
+                <col style="width: 100px;">
+                <col style="width: 50px;">
+                <col style="width: 1000px;">
+                <col style="width: 60px;">
+                <col style="width: 110px;">  <col style="width: 110px;">  <col style="width: 110px;">  <col style="width: 110px;">
             </colgroup>
             <thead><tr>
             <th>ID</th><th>拠点名</th><th class="c-defense">防衛ギルド</th><th style="text-align:center;">防衛/侵攻PT</th><th class="c-attack">侵攻ギルド</th><th>状態</th>
@@ -315,10 +320,22 @@
         const defaultOpt = document.createElement('option');
         defaultOpt.value = ""; defaultOpt.textContent = "選択してください";
         groupSelect.appendChild(defaultOpt);
+
         Object.keys(GROUP_DATA).sort((a,b) => a-b).forEach(id => {
-            const opt = document.createElement('option'); opt.value = id; opt.textContent = `${id} [${GROUP_DATA[id]}]`;
+            const opt = document.createElement('option'); 
+            opt.value = id; 
+            const textContent = `${id} [${GROUP_DATA[id]}]`;
+            opt.textContent = textContent;
+
+            // W104が含まれている場合、黄色くハイライト
+            if (textContent.includes("W104")) {
+                opt.style.backgroundColor = "#eab308"; // --battleの色
+                opt.style.color = "#000";
+            }
+
             groupSelect.appendChild(opt);
         });
+
         groupSelect.addEventListener('change', () => {
             if (groupSelect.value) { display.textContent = `World: ${GROUP_DATA[groupSelect.value]}`; updateData(); }
             else { display.textContent = "Select..."; }
