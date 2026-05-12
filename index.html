@@ -1,4 +1,3 @@
-<!-- デザイン部分は以前のものを継承し、Script部分を抜本的に修正 -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -163,70 +162,79 @@
         };
     }
 
-    function renderTable(logData, isLive) {
-        let html = `<table><thead><tr><th>ID</th><th>拠点</th><th>防衛ギルド</th><th>PT</th><th>攻撃ギルド</th><th>状態</th><th>防衛開始</th><th>攻撃開始</th><th>陥落</th><th>反撃</th></tr></thead><tbody>`;
-        let combined = [];
+function renderTable(logData, isLive) {
+    let html = `<table><thead><tr><th>ID</th><th>拠点</th><th>防衛ギルド</th><th>PT</th><th>攻撃ギルド</th><th>状態</th><th>防衛開始</th><th>攻撃開始</th><th>陥落</th><th>反撃</th></tr></thead><tbody>`;
+    let combined = [];
 
-        for (let i = 1; i <= 21; i++) {
-            // 【火曜日対応：全ログ行をマージする新ロジック】
-            const castleLogs = logData.filter(d => String(d.CastleID) === String(i));
-            
-            // 全行から存在する時刻をかき集める
-            const merged = {
-                DefenseGuildName: "-", AttackGuildName: "-",
-                DefenseTime: "-", AttackTime: "-", FallenTime: "-", CounterTime: "-"
-            };
+    for (let i = 1; i <= 21; i++) {
+        // その拠点のログを全件抽出
+        const castleLogs = logData.filter(d => String(d.CastleID) === String(i));
+        
+        // データを集約するための器（初期値はハイフン）
+        let merged = {
+            dName: "-", aName: "-",
+            dTime: "-", aTime: "-", fTime: "-", cTime: "-"
+        };
 
-            castleLogs.forEach(entry => {
-                if (entry.DefenseTime && entry.DefenseTime !== "-") merged.DefenseTime = entry.DefenseTime;
-                if (entry.AttackTime && entry.AttackTime !== "-") merged.AttackTime = entry.AttackTime;
-                if (entry.FallenTime && entry.FallenTime !== "-") merged.FallenTime = entry.FallenTime;
-                if (entry.CounterTime && entry.CounterTime !== "-") merged.CounterTime = entry.CounterTime;
-                
-                // ギルド名は最新（一番下）のものを採用
-                if (entry.DefenseGuildName) merged.DefenseGuildName = entry.DefenseGuildName;
-                if (entry.AttackGuildName && entry.AttackGuildName !== "未所属") merged.AttackGuildName = entry.AttackGuildName;
-            });
+        // 重要：全ログ行をループして、1つでも時刻があれば「器」に格納し、二度と「-」で上書きさせない
+        castleLogs.forEach(entry => {
+            // 防衛開始時刻
+            if (entry.DefenseTime && entry.DefenseTime !== "-") merged.dTime = entry.DefenseTime;
+            // 攻撃開始時刻
+            if (entry.AttackTime && entry.AttackTime !== "-") merged.aTime = entry.AttackTime;
+            // 陥落時刻
+            if (entry.FallenTime && entry.FallenTime !== "-") merged.fTime = entry.FallenTime;
+            // 反撃時刻
+            if (entry.CounterTime && entry.CounterTime !== "-") merged.cTime = entry.CounterTime;
 
-            const wsInfo = wsCastleData[i] || {};
-            let dName = merged.DefenseGuildName, aName = merged.AttackGuildName;
-            let dp = 0, ap = 0;
-
-            if (isLive) {
-                const liveD = wsGuildData[wsInfo.gid] || "-";
-                const liveA = wsGuildData[wsInfo.agid] || "-";
-                if (liveD !== "-") dName = liveD;
-                if (liveA !== "-") aName = liveA;
-                dp = wsInfo.dp || 0; ap = wsInfo.ap || 0;
-                if (wsInfo.state === 2 || wsInfo.state === 3) [dName, aName] = [aName, dName];
+            // ギルド名の取得
+            if (entry.DefenseGuildName && entry.DefenseGuildName !== "-") merged.dName = entry.DefenseGuildName;
+            if (entry.AttackGuildName && entry.AttackGuildName !== "-" && entry.AttackGuildName !== "未所属") {
+                merged.aName = entry.AttackGuildName;
             }
+        });
 
-            let status = "確定", sClass = "s-defense";
-            const hasFallen = (merged.FallenTime !== "-");
-            const hasAttack = (aName !== "-" && aName !== "未所属") || (merged.AttackTime !== "-");
-            const hasCounter = (merged.CounterTime !== "-");
+        // ライブデータの反映
+        const wsInfo = wsCastleData[i] || {};
+        let displayD = merged.dName;
+        let displayA = merged.aName;
+        let dp = 0, ap = 0;
 
-            if (hasCounter) { status = "宣戦"; sClass = "s-battle"; }
-            else if (hasFallen) { status = "陥落"; sClass = "s-fallen"; }
-            else if (hasAttack) { status = "宣戦"; sClass = "s-battle"; }
-
-            html += `<tr>
-                <td style="color:var(--accent)">${i}</td>
-                <td><strong>${castleNames[i] || '拠点'+i}</strong></td>
-                <td class="c-defense">${dName}</td>
-                <td><span class="c-defense">${dp}</span> / <span class="c-attack">${ap}</span></td>
-                <td class="c-attack">${aName}</td>
-                <td><span class="badge ${sClass}">${status}</span></td>
-                <td class="time-cell">${merged.DefenseTime}</td>
-                <td class="time-cell">${merged.AttackTime}</td>
-                <td class="time-cell">${merged.FallenTime}</td>
-                <td class="time-cell">${merged.CounterTime}</td>
-            </tr>`;
-            combined.push({name: dName, pt: dp});
+        if (isLive) {
+            const liveD = wsGuildData[wsInfo.gid] || "-";
+            const liveA = wsGuildData[wsInfo.agid] || "-";
+            if (liveD !== "-") displayD = liveD;
+            if (liveA !== "-") displayA = liveA;
+            dp = wsInfo.dp || 0; ap = wsInfo.ap || 0;
+            // 占領状態(state 2,3)なら攻守交代
+            if (wsInfo.state === 2 || wsInfo.state === 3) {
+                [displayD, displayA] = [displayA, displayD];
+            }
         }
-        document.getElementById('tableContainer').innerHTML = html + `</tbody></table>`;
-        updateSummary(combined);
+
+        // 状態バッジ判定
+        let status = "確定", sClass = "s-defense";
+        if (merged.cTime !== "-") { status = "反撃"; sClass = "s-battle"; }
+        else if (merged.fTime !== "-") { status = "陥落"; sClass = "s-fallen"; }
+        else if (displayA !== "-" && displayA !== "未所属") { status = "宣戦"; sClass = "s-battle"; }
+
+        html += `<tr>
+            <td style="color:var(--accent)">${i}</td>
+            <td><strong>${castleNames[i] || '拠点'+i}</strong></td>
+            <td class="c-defense">${displayD}</td>
+            <td><span class="c-defense">${dp}</span> / <span class="c-attack">${ap}</span></td>
+            <td class="c-attack">${displayA}</td>
+            <td><span class="badge ${sClass}">${status}</span></td>
+            <td class="time-cell">${merged.dTime}</td>
+            <td class="time-cell">${merged.aTime}</td>
+            <td class="time-cell">${merged.fTime}</td>
+            <td class="time-cell">${merged.cTime}</td>
+        </tr>`;
+        combined.push({name: displayD, pt: dp});
     }
+    document.getElementById('tableContainer').innerHTML = html + `</tbody></table>`;
+    updateSummary(combined);
+}
 
     function updateSummary(data) {
         const sum = {};
