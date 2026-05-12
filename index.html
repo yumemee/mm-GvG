@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>▶ GRAND WAR MONITOR / DIAGNOSTIC FIX</title>
+    <title>▶ GRAND WAR MONITOR / FIXED</title>
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -52,7 +52,7 @@
         #clock { font-family: var(--mono); font-weight: bold; color: var(--accent); font-size: 13px; }
         #updateStatus { font-size: 10px; font-weight: bold; }
 
-        .guild-summary { background: var(--surface2); border-bottom: 1px solid var(--border); padding: 6px 16px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .guild-summary { background: var(--surface2); border-bottom: 1px solid var(--border); padding: 6px 16px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-height: 40px; }
         .summary-label { font-size: 10px; font-weight: bold; color: var(--muted); background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 3px; border: 1px solid var(--border2); display: flex; align-items: center; gap: 5px; }
         .summary-label::before { content: ""; width: 6px; height: 6px; background: var(--defense); border-radius: 50%; }
         .guild-chip { background: rgba(255,255,255,0.05); border: 1px solid var(--border); padding: 3px 10px; border-radius: 3px; font-size: 11px; font-family: var(--mono); }
@@ -161,19 +161,13 @@
 </div>
 
 <script>
-    // ブラウザのキャッシュ対策とプロキシ対応を兼ねた関数
     const getApiUrl = (baseUrl, params) => {
         const query = new URLSearchParams(params);
-        query.append('_t', Date.now()); // キャッシュ回避
-        
-        // ターゲットURLを組み立てる (例: https://api.../GvGLog?Group=165...)
+        query.append('_t', Date.now());
         const targetUrl = `${baseUrl}?${query.toString()}`;
-        
-        // プロキシURLの直後にターゲットURLを結合して返す
         return `https://corsproxy.io/?${targetUrl}`;
     };
 
-    // ここは元のAPIアドレスに戻します（関数内でプロキシと合体させるため）
     const BASE_LOG_API = 'https://api.tamamo.dev/GvGLog';
     const CASTLE_API = 'https://tamamo.dev/assets/Resource/CastleId.json';
     
@@ -197,9 +191,6 @@
     let currentDay = dayNames[new Date().getDay()];
     if (currentDay === 'Mon') currentDay = 'Sat';
 
-    function getHistory() { return JSON.parse(localStorage.getItem(`gvg_history_log_${currentDay}`)) || {}; }
-    function saveHistory(data) { localStorage.setItem(`gvg_history_log_${currentDay}`, JSON.stringify(data)); }
-
     function setupGroupList() {
         const select = document.getElementById('groupSelect');
         const display = document.getElementById('selectedWorldDisplay');
@@ -219,8 +210,10 @@
         try {
             const res = await fetch(CASTLE_API);
             const data = await res.json();
-            data.forEach(item => { castleNames[item.Id] = item.Name; });
-        } catch (e) { console.warn("拠点名の取得に失敗しました(表示には影響ありません)"); }
+            data.forEach(item => { 
+                castleNames[item.id || item.Id] = item.name || item.Name; 
+            });
+        } catch (e) { console.warn("拠点名の取得に失敗しました"); }
     }
 
     async function updateData() {
@@ -245,9 +238,7 @@
         try {
             const res = await fetch(url);
             if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
-            
             const json = await res.json();
-            // APIの構造に合わせて Log 部分を抽出
             const logData = json.data && json.data.Log ? json.data.Log : [];
             
             if (logData.length === 0) {
@@ -256,10 +247,8 @@
                 return;
             }
 
-            processHistory(logData);
-            // ギルド名が取得できない構造なのでサマリーは一旦クリア
-            document.getElementById('guildSummary').innerHTML = ""; 
             renderTable(logData);
+            updateGuildSummary(logData);
             
             statusEl.textContent = `OK: ${new Date().toLocaleTimeString()}`;
             statusEl.style.color = "var(--defense)";
@@ -272,23 +261,21 @@
         }
     }
 
-    function processHistory(data) {
-    }
-
-function renderTable(data) {
+    function renderTable(data) {
         let html = `<table><thead><tr>
             <th>ID</th>
             <th>拠点</th>
+            <th style="color:var(--defense)">防衛ギルド</th>
+            <th style="color:var(--attack)">侵攻ギルド</th>
             <th>状態</th>
-            <th style="color:var(--defense)">防衛開始</th>
-            <th style="color:var(--attack)">攻撃開始</th>
-            <th style="color:var(--fallen)">陥落時刻</th>
-            <th style="color:var(--battle)">反撃時刻</th>
+            <th>防衛開始</th>
+            <th>攻撃開始</th>
+            <th>陥落時刻</th>
+            <th>反撃時刻</th>
         </tr></thead><tbody>`;
 
         data.sort((a, b) => a.CastleID - b.CastleID).forEach(row => {
             const id = row.CastleID;
-            // 状態の判定
             let label = '確定', sClass = 's-defense';
             if (row.FallenTime) { label = '陥落'; sClass = 's-fallen'; }
             else if (row.AttackTime) { label = '宣戦'; sClass = 's-battle'; }
@@ -296,7 +283,9 @@ function renderTable(data) {
 
             html += `<tr>
                 <td style="color:var(--accent); font-weight:bold;">${id}</td>
-                <td><strong>${castleNames[id] || 'Castle '+id}</strong></td>
+                <td><strong>${castleNames[id] || '拠点 '+id}</strong></td>
+                <td style="color:var(--defense); font-weight:bold;">${row.DefenseGuildName || '-'}</td>
+                <td style="color:var(--attack); font-weight:bold;">${row.AttackGuildName || '-'}</td>
                 <td><span class="badge ${sClass}">${label}</span></td>
                 <td class="time-cell">${row.DefenseTime || '-'}</td>
                 <td class="time-cell">${row.AttackTime || '-'}</td>
@@ -309,7 +298,12 @@ function renderTable(data) {
 
     function updateGuildSummary(data) {
         const summary = {};
-        data.forEach(row => { if (row.GuildName) summary[row.GuildName] = (summary[row.GuildName] || 0) + row.DefensePartyCount; });
+        data.forEach(row => { 
+            const gName = row.DefenseGuildName;
+            if (gName && gName !== "-") {
+                summary[gName] = (summary[gName] || 0) + (row.DefensePartyCount || 0);
+            }
+        });
         const container = document.getElementById('guildSummary');
         const sorted = Object.entries(summary).sort((a,b) => b[1] - a[1]);
         let labelHtml = `<div class="summary-label">防衛パーティ数</div>`;
