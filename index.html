@@ -89,8 +89,20 @@
     const CASTLE_API = 'https://tamamo.dev/assets/Resource/CastleId.json';
     
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    // 初期選択
-    let currentDay = dayNames[new Date().getDay()] === 'Mon' ? 'Sat' : dayNames[new Date().getDay()];
+
+    // 【修正】午前5時リセットのロジック
+    function getGvGDayInfo() {
+        const now = new Date();
+        // 現在時刻から5時間を引くことで、深夜0:00-4:59を「前日の深夜」として扱う
+        const adjustedDate = new Date(now.getTime() - (5 * 60 * 60 * 1000));
+        return {
+            dayName: dayNames[adjustedDate.getDay()],
+            dateStr: adjustedDate.toLocaleDateString('sv-SE') // YYYY-MM-DD
+        };
+    }
+
+    const gvgTimeInfo = getGvGDayInfo();
+    let currentDay = gvgTimeInfo.dayName === 'Mon' ? 'Sat' : gvgTimeInfo.dayName;
 
     let ws = null;
     let wsGuildData = {};
@@ -119,13 +131,10 @@
         if (ws) { ws.close(); ws = null; }
         wsCastleData = [];
         wsGuildData = {};
+        document.getElementById('tableContainer').innerHTML = ""; // クリア
 
-        // 【重要】日本時間のローカル日付を YYYY-MM-DD で取得
-        const now = new Date();
-        const todayStr = now.toLocaleDateString('sv-SE'); // YYYY-MM-DD 形式
-        const realTodayDayName = dayNames[now.getDay()];
-
-        const isTodaySelected = (currentDay === realTodayDayName);
+        const gvgInfo = getGvGDayInfo();
+        const isTodaySelected = (currentDay === gvgInfo.dayName);
 
         statusEl.textContent = "FETCHING...";
         const params = new URLSearchParams({ 
@@ -175,31 +184,27 @@
                         offset += 20;
                     } else break;
                 }
-                combineAndRender(logDataArray, true, todayStr);
+                combineAndRender(logDataArray, true, gvgInfo.dateStr);
             };
         } else {
-            combineAndRender(logDataArray, false, todayStr);
+            combineAndRender(logDataArray, false, gvgInfo.dateStr);
         }
         statusEl.textContent = "OK"; 
     }
 
     function combineAndRender(logDataArray, isTodaySelected, todayStr) {
         let combinedData = [];
-        const selectedDay = currentDay; 
 
         for (let i = 1; i <= 21; i++) {
-            // ログのフィルタリングロジックをより厳密化
+            // 【重要】選択したタブの曜日（currentDay）と、API側の曜日（d.Week）が完全に一致するものだけを抽出
             let logInfo = logDataArray.find(d => {
                 const isIdMatch = String(d.CastleID) === String(i);
-                // APIのWeekフィールドと選択したタブを比較
-                const isWeekMatch = d.Week === selectedDay;
+                const isWeekMatch = d.Week === currentDay; // 曜日が厳密に一致するか
                 
                 if (isTodaySelected) {
-                    // 今日タブの場合：拠点が一致し、かつ日付が今日のものだけを優先
                     const logDate = d.Created ? d.Created.split(' ')[0] : "";
                     return isIdMatch && isWeekMatch && logDate === todayStr;
                 } else {
-                    // 過去タブの場合：拠点が一致し、Weekが一致していれば採用
                     return isIdMatch && isWeekMatch;
                 }
             }) || {};
@@ -212,13 +217,10 @@
                 aName = wsGuildData[wsInfo.AttackerGuildId] || "-";
                 dP = wsInfo.DefensePartyCount || 0;
                 aP = wsInfo.AttackPartyCount || 0;
-                // 攻守交替の考慮
                 if (wsInfo.GvgCastleState == 2 || wsInfo.GvgCastleState == 3) {
                     let t = dName; dName = aName; aName = t;
                 }
             }
-
-            const hasLog = (logInfo.DefenseTime || logInfo.AttackTime || logInfo.FallenTime);
 
             combinedData.push({
                 CastleID: i, 
